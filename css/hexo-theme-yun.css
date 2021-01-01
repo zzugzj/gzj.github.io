@@ -1942,8 +1942,7 @@ pre[class*='language-']:hover .copy-btn {
   text-decoration: underline;
 }
 .search-popup {
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
+  background-image: url("https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/bg/stars-timing-0-blur-30px.jpg");
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
@@ -2075,6 +2074,9 @@ pre[class*='language-']:hover .copy-btn {
     background-color: rgba(27,31,46,0.95);
     background-image: none;
   }
+  :root:not([data-user-color-scheme]) .search-popup {
+    background-image: url("https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/bg/mountain-blur-30px.jpg");
+  }
   :root:not([data-user-color-scheme]) .post-title-link {
     color: #3ca1ff;
   }
@@ -2150,6 +2152,9 @@ pre[class*='language-']:hover .copy-btn {
 [data-user-color-scheme='dark'] .sidebar {
   background-color: rgba(27,31,46,0.95);
   background-image: none;
+}
+[data-user-color-scheme='dark'] .search-popup {
+  background-image: url("https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/bg/mountain-blur-30px.jpg");
 }
 [data-user-color-scheme='dark'] .post-title-link {
   color: #3ca1ff;
