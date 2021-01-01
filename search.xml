@@ -193,6 +193,33 @@
     
     
     <entry>
+      <title>第5章 调优案例分析与实战</title>
+      <link href="posts/20e6ef96/"/>
+      <url>posts/20e6ef96/</url>
+      
+        <content type="html"><![CDATA[<link rel="stylesheet" class="aplayer-secondary-style-marker" href="\assets\css\APlayer.min.css"><script src="\assets\js\APlayer.min.js" class="aplayer-secondary-script-marker"></script><h3 id="案例分析"><a href="#案例分析" class="headerlink" title="案例分析"></a>案例分析</h3><h4 id="高性能硬件上的程序部署"><a href="#高性能硬件上的程序部署" class="headerlink" title="高性能硬件上的程序部署"></a>高性能硬件上的程序部署</h4><p><strong>两种方式</strong></p><blockquote><p>通过64位JDK使用大内存</p></blockquote><p>内存回收导致长时间停顿。</p><p>现阶段，64位JDK的性能结果普遍低于32位JDK。</p><p>需要保证程序稳定，因为产生堆栈溢出几乎无法产生堆转储快照，产生了也无法分析。</p><p>由于指针膨胀、数据类型对齐补白等因素，64位消耗内存更大。</p><blockquote><p>通过若干个32位虚拟机建立逻辑集群来利用硬件资源</p></blockquote><p>避免节点竞争全局资源，例如磁盘竞争。</p><p>很难最高效率的利用某些资源池。</p><p>各节点不可避免的受到32G的内存限制。</p><p>大量使用本地缓存的应用，造成内存浪费，考虑改为集中式缓存。</p><h4 id="堆外内存导致的溢出错误"><a href="#堆外内存导致的溢出错误" class="headerlink" title="堆外内存导致的溢出错误"></a>堆外内存导致的溢出错误</h4><p>除了Java堆和方法区之外，一下区域还可能占用较多内存：</p><ul><li>直接内存：可通过-XX:MaxDirectMemorySize调整大小，内存不足时抛出OutOfMemoryError或者OutOfMemoryError:Direct buffer memory</li><li>线程堆栈：可通过-Xss调整大小，内存不足时抛出StackOverFlowError(如果线程请求的栈深度大于虚拟机允许的深度)或者OutOfMemoryError(如果Java虚拟机栈容量可以动态扩展，当栈扩展无法申请到足够的内存)。</li><li>Socket缓存区：每个Socket连接都Receive和Send两个缓存区，分别占用约37KB和25KB内存，连接多的话这块内存占用也可观。如果无法分配，可能会抛出IOException:Too many open files异常。</li><li>JNI代码：如果代码中使用了JNI调用本地库，那本地库使用的内存也不在堆中，而是占用Java虚拟机的本地方法栈和本地内存的。</li><li>虚拟机和垃圾收集器：虚拟机、垃圾收集器的工作也是要消耗一定数量的内存的。</li></ul>]]></content>
+      
+      
+      <categories>
+          
+          <category> 深入理解Java虚拟机读书笔记 </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Java虚拟机 </tag>
+            
+            <tag> 学习笔记 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
       <title>第2章 Java内存区域与内存溢出异常</title>
       <link href="posts/30994d61/"/>
       <url>posts/30994d61/</url>
