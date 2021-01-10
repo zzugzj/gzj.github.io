@@ -1,115 +1,74 @@
-<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="gzj"><meta name="copyright" content="gzj"><meta name="generator" content="Hexo 5.3.0"><meta name="theme" content="hexo-theme-yun"><title>第2章 Java内存区域与内存溢出异常 | gzj-blogs</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
-  [".post-card",".post-content img"].forEach((target)=> {
-    ScrollReveal().reveal(target);
-  })
-});
-</script><link class="aplayer-style-marker" rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.css"><script class="aplayer-script-marker" src="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.js" defer></script><script class="meting-script-marker" src="https://cdn.jsdelivr.net/npm/meting@1/dist/Meting.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/pjax@latest/pjax.min.js" defer></script><script src="/jsax.js" defer></script><script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><link rel="alternate" href="/atom.xml" title="gzj-blogs" type="application/atom+xml"><script id="yun-config">
-    const Yun = window.Yun || {};
-    window.CONFIG = {"hostname":"zzugzj.github.io","root":"/","title":"勿在浮沙筑高台","version":"1.3.0","mode":"auto","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"local_search":{"path":"/search.xml"},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
-  </script><meta name="description" content="Java虚拟机在执行Java程序的过程中会把它所管理的内存划分为若干个不同的数据区域。">
-<meta property="og:type" content="article">
-<meta property="og:title" content="第2章 Java内存区域与内存溢出异常">
-<meta property="og:url" content="https://zzugzj.github.io/posts/30994d61/index.html">
-<meta property="og:site_name" content="gzj-blogs">
-<meta property="og:description" content="Java虚拟机在执行Java程序的过程中会把它所管理的内存划分为若干个不同的数据区域。">
-<meta property="og:locale" content="zh_CN">
-<meta property="og:image" content="https://i.loli.net/2020/05/05/WhxvawGiBzqLAMb.png">
-<meta property="og:image" content="https://i.loli.net/2020/05/14/myXArgNB1WKhE6a.png">
-<meta property="og:image" content="https://i.loli.net/2020/05/06/nhRbjHZoq5azAsO.png">
-<meta property="og:image" content="https://i.loli.net/2020/05/06/ySxwzpvH27rZt9o.png">
-<meta property="article:published_time" content="2021-01-01T13:38:13.000Z">
-<meta property="article:modified_time" content="2021-01-01T14:29:48.744Z">
-<meta property="article:author" content="gzj">
-<meta property="article:tag" content="Java虚拟机">
-<meta property="article:tag" content="学习笔记">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://i.loli.net/2020/05/05/WhxvawGiBzqLAMb.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="gzj"><img width="96" loading="lazy" src="/images/avatar.jpg" alt="gzj"><span class="site-author-status" title="不想上班">😭</span></a><div class="site-author-name"><a href="/about/">gzj</a></div><a class="site-name" href="/about/site.html">gzj-blogs</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">14</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">3</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">4</span></a></div><a class="site-state-item hty-icon-button" href="/about" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-rss-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/zzugzj" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=1317412612" title="网易云音乐" target="_blank" style="color:#C20C0C"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-netease-cloud-music-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:1045643052@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-contrast-2-line"></use></svg></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E6%95%B0%E6%8D%AE%E5%8C%BA%E5%9F%9F"><span class="toc-number">1.</span> <span class="toc-text">运行时数据区域</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="toc-number">1.1.</span> <span class="toc-text">程序计数器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88"><span class="toc-number">1.2.</span> <span class="toc-text">Java虚拟机栈</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%9C%AC%E5%9C%B0%E6%96%B9%E6%B3%95%E6%A0%88"><span class="toc-number">1.3.</span> <span class="toc-text">本地方法栈</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Java%E5%A0%86"><span class="toc-number">1.4.</span> <span class="toc-text">Java堆</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E5%8C%BA"><span class="toc-number">1.5.</span> <span class="toc-text">方法区</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%BF%90%E8%A1%8C%E6%97%B6%E5%B8%B8%E9%87%8F%E6%B1%A0"><span class="toc-number">1.6.</span> <span class="toc-text">运行时常量池</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%9B%B4%E6%8E%A5%E5%86%85%E5%AD%98"><span class="toc-number">1.7.</span> <span class="toc-text">直接内存</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HotSpot%E8%99%9A%E6%8B%9F%E6%9C%BA%E7%9A%84%E5%AF%B9%E8%B1%A1"><span class="toc-number">2.</span> <span class="toc-text">HotSpot虚拟机的对象</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%88%9B%E5%BB%BA"><span class="toc-number">2.1.</span> <span class="toc-text">对象的创建</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%86%85%E5%AD%98%E5%B8%83%E5%B1%80"><span class="toc-number">2.2.</span> <span class="toc-text">对象的内存布局</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AF%B9%E8%B1%A1%E7%9A%84%E8%AE%BF%E9%97%AE%E5%AE%9A%E4%BD%8D"><span class="toc-number">2.3.</span> <span class="toc-text">对象的访问定位</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E4%B8%AA%E6%9C%89%E8%B6%A3%E7%9A%84%E5%AE%9E%E9%AA%8C"><span class="toc-number"></span> <span class="toc-text">一个有趣的实验</span></a></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://zzugzj.github.io/posts/30994d61/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="gzj"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="gzj-blogs"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">第2章 Java内存区域与内存溢出异常</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <span class="post-meta-icon-text">发表于</span> <time title="创建时间：2021-01-01 21:38:13" itemprop="dateCreated datePublished" datetime="2021-01-01T21:38:13+08:00">2021-01-01</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-file-word-line"></use></svg></span> <span title="本文字数">2.4k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-timer-line"></use></svg></span> <span title="阅读时长">8m</span></span></span><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">深入理解Java虚拟机读书笔记</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/Java%E8%99%9A%E6%8B%9F%E6%9C%BA/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">Java虚拟机</span></a><a class="tag" href="/tags/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">学习笔记</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h3 id="运行时数据区域"><a href="#运行时数据区域" class="headerlink" title="运行时数据区域"></a>运行时数据区域</h3><p>Java虚拟机在执行Java程序的过程中会把它所管理的内存划分为若干个不同的数据区域。</p>
-<img src="https://i.loli.net/2020/05/05/WhxvawGiBzqLAMb.png" alt="image-20200505142316196" style="zoom: 50%;" / loading="lazy">
-
-<h4 id="程序计数器"><a href="#程序计数器" class="headerlink" title="程序计数器"></a>程序计数器</h4><p>程序计数器是一块较小的内存空间，它可以看作是当前线程所执行的字节码的行号指示器。它在线程隔离的数据区，属于线程私有的内存。</p>
-<p>如果线程正在执行的是一个Java方法，这个计数器记录的是正在执行的虚拟机字节码指令的地址；如果正在执行的是本地方法，这个计数器值应为空(Undifined)。</p>
-<h4 id="Java虚拟机栈"><a href="#Java虚拟机栈" class="headerlink" title="Java虚拟机栈"></a>Java虚拟机栈</h4><p>Java虚拟机栈是线程私有的，它的生命周期和线程相同。</p>
-<img src="https://i.loli.net/2020/05/14/myXArgNB1WKhE6a.png" alt="image-20200514224901767" style="zoom: 67%;" / loading="lazy">
-
-<p>每个方法被执行的时候，Java虚拟机都会同步的创建一个栈帧用于存储局部变量表、操作数栈、动态连接、方法出口等信息。</p>
-<p>局部变量表存放了编译期可知的各种Java虚拟机基本数据类型、对象引用类型和returnAddress类型(指向一条字节码指令的地址)。局部变量表所需的内存空间在编译期间完成分配，当进入一个方法时，这个方法需要在栈帧中分配多大的局部变量空间是完全确定的。</p>
-<p>如果线程请求的栈深度大于虚拟机所允许的深度，抛出StackOverFlowError异常；如果Java虚拟机栈容量可以动态扩展，当栈扩展时无法申请到足够内存时抛出OutOfMemoryError异常。</p>
-<h4 id="本地方法栈"><a href="#本地方法栈" class="headerlink" title="本地方法栈"></a>本地方法栈</h4><p>本地方法栈与Java虚拟机栈作用类似，区别是虚拟机栈为虚拟机执行Java方法服务，本地方法栈则是为虚拟机用到的本地方法服务。</p>
-<h4 id="Java堆"><a href="#Java堆" class="headerlink" title="Java堆"></a>Java堆</h4><p>Java堆是被所有线程共享的一块内存区域，在虚拟机启动时创建。此内存区域的唯一目的是存放对象实例。</p>
-<p>Java堆是垃圾收集器管理的内存区域，可以处于物理上不连续的内存空间中，但在逻辑上被视为连续的。</p>
-<p>Java堆既可以被实现成固定大小的，也可以是扩展的，不过当前主流的Java虚拟机都是按照可扩展来实现的。如果Java堆没有内存完成实例分配，并且堆无法扩展时，会抛出OutOfMemoryError异常。</p>
-<h4 id="方法区"><a href="#方法区" class="headerlink" title="方法区"></a>方法区</h4><p>方法区与Java堆一样，是各个线程共享的内存区域，它用于存储已被虚拟机加载的类型信息、常量、静态变量、即时编译器编译后的代码缓存等数据。</p>
-<p>在jdk8以前，很多人把方法区称为永久代，但两者不同，当初是hotspot虚拟机设计团队选择使用永久代来实现方法区，这样就可以让hotspot的垃圾收集器可以像管理Java堆一样管理方法区。但这样设计让Java应用更容易遇到内存溢出问题(永久代有-XX:MaxPermSize上限)，在jdk8时，完全废弃了永久代的概念，改为在本地内存实现的元空间。</p>
-<p>如果方法区无法满足新的内存分配需求时，将抛出OutOfMemoryError异常。</p>
-<h4 id="运行时常量池"><a href="#运行时常量池" class="headerlink" title="运行时常量池"></a>运行时常量池</h4><p>运行时常量池是方法区的一部分。Class文件中除了有类的版本、字段、方法、接口等描述信息外，还有常量池表，用于存放编译期生成的各种字面量和符号引用，这部分内容将在类加载后存放到方法区的运行时常量池中。</p>
-<p>运行时常量池具有动态性，不要求常量一定只有编译期才产生，比如String类的intern方法。</p>
-<p>常量池无法申请到内存时会抛出OutOfMemory异常。</p>
-<h4 id="直接内存"><a href="#直接内存" class="headerlink" title="直接内存"></a>直接内存</h4><p>直接内存（Direct Memory）就是Java堆外内存。直接内存不是虚拟机运行时数据区的一部分，但这部分内存经常被使用，也有可能导致OutOfMemory异常。</p>
-<p>在jdk1.4中新加入了NIO类，引入了基于通道和缓冲区的I/O方式，它可以使用Native函数库直接分配堆外内存，然后通过一个存储在Java堆里面的DirectByteBuffer对象作为这块内存的引用进行操作。这样可以在一些场景中显著提高性能，因为避免了在Java堆和Native堆中来回复制数据。</p>
-<p>直接内存会受到本机总内存大小以及处理器寻址空间的限制，不当处理回出现OutOfMemory异常。</p>
-<h3 id="HotSpot虚拟机的对象"><a href="#HotSpot虚拟机的对象" class="headerlink" title="HotSpot虚拟机的对象"></a>HotSpot虚拟机的对象</h3><p>关于HotSpot虚拟机在Java堆中对象(不包括数组和Class对象)分配、布局和访问的全过程。</p>
-<h4 id="对象的创建"><a href="#对象的创建" class="headerlink" title="对象的创建"></a>对象的创建</h4><p>在虚拟机遇见new指令时，先去检查这个指令的参数是否能在常量池中定位到一个类的符号引用，并且检查这个引用代表的类是否被加载、解析和初始化过，没有，那就先执行类加载。</p>
-<p>类加载检查通过后，接下来虚拟机为对象分配内存。如果Java堆中内存是绝对规整的，就是使用过的内存在一边，没用过的在另一边，那分配内存就是把指针向空闲方移动一段，称位‘指针碰撞’。如果不规整，那虚拟机就维护一个列表，记录内存是否可用，这种方式是‘空闲列表‘。一般Java堆采用有空间压缩整理能力的GC时可以用指针碰撞。</p>
-<p>对象分配很频繁，只是指针碰撞的话，它不是线程安全的。目前有两种方式解决：一是采用CAS配上失败重试的方式保证更新操作的原子性；另一种是把内存分配的动作按线程划分在不同空间进行，即每个线程在Java堆先分配一小块内存，称为本地线程分配缓冲(TLAB)，如果使用TLAB的话，可以在TLAB分配时顺便进行内存初始化，否则只能在分配完毕后初始化为零值。然后对对象头进行设置，这样从虚拟机角度看，一个对象就产生了。但从程序员角度看，构造函数还没执行，然后执行构造函数。</p>
-<h4 id="对象的内存布局"><a href="#对象的内存布局" class="headerlink" title="对象的内存布局"></a>对象的内存布局</h4><p>在HotSpot虚拟机里，对象在堆中的存储可以分为三部分：对象头、实例数据和对齐填充。</p>
-<p>对象头主要有两类信息：</p>
-<ul>
-<li><p>一类是存储对象自身的数据，如哈希码，GC分代年龄，锁状态标志，线程持有的锁，偏向线程ID，偏向时间戳等，称为<code>Mark Word</code>。考虑虚拟机空间效率，Mark Word被设计成有动态定义的数据结构。</p>
-</li>
-<li><p>另一类是类型指针，即对象指向它的类型元数据的指针，虚拟机通过这个指针确定对象是那个类的实例。但查找对象的元数据信息并不一定经过对象本身。如果对象是一个Java数组，对象头还有一块用于记录数组长度的数据。</p>
-</li>
-</ul>
-<p>实例数据部分是对象真正存储的有效信息，即我们在程序代码里面定义的各种类型的字段内容，无论父类继承还是子类中定义的都记录下来。</p>
-<p>对齐填充就是起到占位符的作用。虚拟机自动内存管理系统要求对象起始地址必须是8字节的整数倍，也就是对象大小是8字节的整数倍。实例数据没有填充够8字节的整数倍的话，就要对齐填充来补全。</p>
-<h4 id="对象的访问定位"><a href="#对象的访问定位" class="headerlink" title="对象的访问定位"></a>对象的访问定位</h4><p>Java程序通过栈上的reference数据来操作堆上的具体对象。目前主流的访问方式主要有句柄和直接指针两种。</p>
-<p>句柄：Java堆会划分出一块内存用来作为句柄池，reference中存储的就是对象的句柄地址，句柄包含对象实例数据和类型数据各自具体的地址信息。</p>
-<p>优点是reference存储的是稳定的句柄地址，对象移动时只会改变句柄的实例数据指针，reference本身不修改。</p>
-<p>缺点是增加了一次指针定位的时间开销。</p>
-<p><img src="https://i.loli.net/2020/05/06/nhRbjHZoq5azAsO.png" alt="3130736-b43450a00c0a9866" loading="lazy"></p>
-<p>直接指针：reference存储的就是对象地址，只访问对象本身，不需要多一次间接访问的开销。速度更快</p>
-<p><img src="https://i.loli.net/2020/05/06/ySxwzpvH27rZt9o.png" alt="3130736-38e0a509ec16d1b0" loading="lazy"></p>
-<p>HotSpot虚拟机主要是使用直接指针来进行对象访问。</p>
-<h2 id="一个有趣的实验"><a href="#一个有趣的实验" class="headerlink" title="一个有趣的实验"></a>一个有趣的实验</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">StaticTest</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        String s1 = <span class="keyword">new</span> StringBuilder(<span class="string">&quot;计算机&quot;</span>).append(<span class="string">&quot;软件&quot;</span>).toString();</span><br><span class="line">        System.out.println(s1.intern() == s1);</span><br><span class="line">        String s2 = <span class="keyword">new</span> StringBuilder(<span class="string">&quot;ja&quot;</span>).append(<span class="string">&quot;va&quot;</span>).toString();</span><br><span class="line">        System.out.println(s2.intern() == s2);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>这段代码在jdk6运行会得到两个false，在jdk7中运行会得到一个true和一个false。</p>
-<p>原因是在jdk6中，intern方法会把首次遇到的字符串实例复制到永久代的字符串常量池中存储，返回的也是永久代的字符串实例的引用，但由于stringBuilder创建的在Java堆上，所以false。</p>
-<p>jdk7的intern方法不需要拷贝字符串实例到永久代了，字符串常量池已经在Java堆中了，所以intern返回的引用和StringBuilder创建的是一个。而Java这个字符串在执行main时已经加载到了字符串常量池中，所以是true。</p>
-</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>gzj</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://zzugzj.github.io/posts/30994d61/" title="第2章 Java内存区域与内存溢出异常">https://zzugzj.github.io/posts/30994d61/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/posts/20e6ef96/" rel="prev" title="第5章 调优案例分析与实战"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">第5章 调优案例分析与实战</span></a></div><div class="post-nav-item"></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>点击按钮跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/zzugzj/zzugzj.github.io/issues?q=is:issue+第2章 Java内存区域与内存溢出异常">GitHub Issues</a></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2020 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> gzj</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.3.0</span></div><div class="live_time"><span>本博客已运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
-  window.setTimeout(blog_live_time, 1000);
-  const start = new Date('2020-12-31T00:00:00');
-  const now = new Date();
-  const timeDiff = (now.getTime() - start.getTime());
-  const msPerMinute = 60 * 1000;
-  const msPerHour = 60 * msPerMinute;
-  const msPerDay = 24 * msPerHour;
-  const passDay = Math.floor(timeDiff / msPerDay);
-  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
-  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
-  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
-  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
+.post-block {
+  margin: 0 1rem;
+  padding: 1rem;
+  background-color: var(--post-block-bg-color);
+mobile()
 }
-blog_live_time();
-</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
-  // Handle and trigger popup window
-  document.querySelector(".popup-trigger").addEventListener("click", () => {
-    document.querySelector(".popup").classList.add("show");
-    setTimeout(() => {
-      document.querySelector(".search-input").focus();
-    }, 100);
-  });
-
-  // Monitor main search box
-  const onPopupClose = () => {
-    document.querySelector(".popup").classList.remove("show");
-  };
-
-  document.querySelector(".popup-btn-close").addEventListener("click", () => {
-    onPopupClose();
-  });
-
-  window.addEventListener("keyup", event => {
-    if (event.key === "Escape") {
-      onPopupClose();
-    }
-  });
-});
-</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div><div class="aplayer no-destroy" id="aplayer" data-id="7840106285" data-server="tencent" data-type="playlist" data-fixed="true" data-theme="#0078E7" data-loop="all" data-order="list" data-preload="auto" data-volume="0.7" data-mutex data-lrctype="0" data-listmaxheight="340px" data-storagename="metingjs"></div></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>
+.post-body {
+  padding: 0 5rem;
+tablet()
+mobile()
+}
+.post-content {
+  padding: 20px 0px;
+}
+.post-meta {
+  font-size: 14px;
+  color: var(--hty-secondary-text-color);
+}
+.post-meta .icon {
+  margin-bottom: -1px;
+}
+.post-description {
+  font-weight: normal;
+  padding: 0.5rem;
+}
+.post-author {
+  display: flex;
+  justify-content: center;
+}
+.post-author .author-avatar {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  line-height: 0;
+}
+.post-author .author-avatar img {
+  border-radius: 50%;
+  height: 1rem;
+  width: 1rem;
+  padding: 2px;
+  border: 2px solid #d3d3d3;
+}
+.post-author .author-name {
+  margin-left: 0.5rem;
+  font-size: 1rem;
+}
+.post-meta-item-icon {
+  display: inline-block;
+  color: var(--text-color, --hty-secondary-text-color);
+}
+.post-meta-divider {
+  height: 25px;
+  color: var(--hty-secondary-text-color);
+  margin: 0 0.5rem;
+}
+.post-eof {
+  margin: 50px auto;
+  width: 50%;
+  height: 1px;
+  background: $blue;
+  opacity: 0.1;
+}
+.post-copyright {
+  font-size: 0.9rem;
+  margin: 2rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid #ff5252;
+  background-color: var(--hty-bg-color);
+  list-style: none;
+  word-break: break-all;
+}
+.tag-name {
+  padding: 0 0.1rem;
+}
