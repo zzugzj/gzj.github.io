@@ -1,74 +1,199 @@
-.post-block {
-  margin: 0 1rem;
-  padding: 1rem;
-  background-color: var(--post-block-bg-color);
-mobile()
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="gzj"><meta name="copyright" content="gzj"><meta name="generator" content="Hexo 5.3.0"><meta name="theme" content="hexo-theme-yun"><title>第12章 Java内存模型与线程 | gzj-blogs</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link class="aplayer-style-marker" rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.css"><script class="aplayer-script-marker" src="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.js" defer></script><script class="meting-script-marker" src="https://cdn.jsdelivr.net/npm/meting@1/dist/Meting.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/pjax@latest/pjax.min.js" defer></script><script src="/jsax.js" defer></script><script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><link rel="alternate" href="/atom.xml" title="gzj-blogs" type="application/atom+xml"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"zzugzj.github.io","root":"/","title":"勿在浮沙筑高台","version":"1.3.0","mode":"auto","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"local_search":{"path":"/search.xml"},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="由于计算机在运行时，大部分时间都花在了磁盘I&#x2F;O、网络通信或者数据库访问上，处理器在大部分时间都处于等待其他资源的空闲状态，让计算机同时处理几项任务就说最容易想到，也是很有效的压榨手段。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第12章 Java内存模型与线程">
+<meta property="og:url" content="https://zzugzj.github.io/posts/dcd6417a/index.html">
+<meta property="og:site_name" content="gzj-blogs">
+<meta property="og:description" content="由于计算机在运行时，大部分时间都花在了磁盘I&#x2F;O、网络通信或者数据库访问上，处理器在大部分时间都处于等待其他资源的空闲状态，让计算机同时处理几项任务就说最容易想到，也是很有效的压榨手段。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://i.loli.net/2020/05/18/jakwtmyhWT3BOGF.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/19/I76PQuXMJmLHdEe.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/19/wcyqszaFiJu9lh5.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/19/4QG79OV8FLRpYoJ.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/19/5zG7eBvQkTgNfMJ.png">
+<meta property="article:published_time" content="2021-01-01T15:29:23.000Z">
+<meta property="article:modified_time" content="2021-01-01T14:29:48.751Z">
+<meta property="article:author" content="gzj">
+<meta property="article:tag" content="Java虚拟机">
+<meta property="article:tag" content="学习笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2020/05/18/jakwtmyhWT3BOGF.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="gzj"><img width="96" loading="lazy" src="/images/avatar.jpg" alt="gzj"><span class="site-author-status" title="不想上班">😭</span></a><div class="site-author-name"><a href="/about/">gzj</a></div><a class="site-name" href="/about/site.html">gzj-blogs</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">14</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">3</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">4</span></a></div><a class="site-state-item hty-icon-button" href="/about" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-rss-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/zzugzj" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=1317412612" title="网易云音乐" target="_blank" style="color:#C20C0C"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-netease-cloud-music-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:1045643052@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-contrast-2-line"></use></svg></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%A1%AC%E4%BB%B6%E7%9A%84%E6%95%88%E7%8E%87%E4%B8%8E%E4%B8%80%E8%87%B4%E6%80%A7"><span class="toc-number">2.</span> <span class="toc-text">硬件的效率与一致性</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Java%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="toc-number">3.</span> <span class="toc-text">Java内存模型</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%BB%E5%86%85%E5%AD%98%E4%B8%8E%E5%B7%A5%E4%BD%9C%E5%86%85%E5%AD%98"><span class="toc-number">3.1.</span> <span class="toc-text">主内存与工作内存</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%86%85%E5%AD%98%E9%97%B4%E4%BA%A4%E4%BA%92%E6%93%8D%E4%BD%9C"><span class="toc-number">3.2.</span> <span class="toc-text">内存间交互操作</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%AF%B9%E4%BA%8Evolatile%E5%9E%8B%E5%8F%98%E9%87%8F%E7%9A%84%E7%89%B9%E6%AE%8A%E8%A7%84%E5%88%99"><span class="toc-number">3.3.</span> <span class="toc-text">对于volatile型变量的特殊规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%92%88%E5%AF%B9long%E5%92%8Cdouble%E5%9E%8B%E5%8F%98%E9%87%8F%E7%9A%84%E7%89%B9%E6%AE%8A%E8%A7%84%E5%88%99"><span class="toc-number">3.4.</span> <span class="toc-text">针对long和double型变量的特殊规则</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8E%9F%E5%AD%90%E6%80%A7%E3%80%81%E5%8F%AF%E8%A7%81%E6%80%A7%E4%B8%8E%E6%9C%89%E5%BA%8F%E6%80%A7"><span class="toc-number">3.5.</span> <span class="toc-text">原子性、可见性与有序性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%88%E8%A1%8C%E5%8F%91%E7%94%9F%E5%8E%9F%E5%88%99"><span class="toc-number">3.6.</span> <span class="toc-text">先行发生原则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Java%E4%B8%8E%E7%BA%BF%E7%A8%8B"><span class="toc-number">4.</span> <span class="toc-text">Java与线程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%BA%BF%E7%A8%8B%E7%9A%84%E5%AE%9E%E7%8E%B0"><span class="toc-number">4.1.</span> <span class="toc-text">线程的实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Java%E7%BA%BF%E7%A8%8B%E8%B0%83%E5%BA%A6"><span class="toc-number">4.2.</span> <span class="toc-text">Java线程调度</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">4.3.</span> <span class="toc-text">状态转换</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Java%E4%B8%8E%E5%8D%8F%E7%A8%8B"><span class="toc-number">4.4.</span> <span class="toc-text">Java与协程</span></a></li></ol></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://zzugzj.github.io/posts/dcd6417a/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="gzj"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="gzj-blogs"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">第12章 Java内存模型与线程</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <span class="post-meta-icon-text">发表于</span> <time title="创建时间：2021-01-01 23:29:23" itemprop="dateCreated datePublished" datetime="2021-01-01T23:29:23+08:00">2021-01-01</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-file-word-line"></use></svg></span> <span title="本文字数">5.5k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-timer-line"></use></svg></span> <span title="阅读时长">18m</span></span></span><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">深入理解Java虚拟机读书笔记</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/Java%E8%99%9A%E6%8B%9F%E6%9C%BA/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">Java虚拟机</span></a><a class="tag" href="/tags/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">学习笔记</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h2 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h2><p>由于计算机在运行时，大部分时间都花在了磁盘I/O、网络通信或者数据库访问上，处理器在大部分时间都处于等待其他资源的空闲状态，让计算机同时处理几项任务就说最容易想到，也是很有效的压榨手段。</p>
+<p>衡量一个服务性能的好坏，每秒事务处理数(Transaction Per Second，TPS)是重要指标之一，它代表着一秒内服务端平均能响应的请请求总数，TPS值和并发能力有很密切的关系。</p>
+<h2 id="硬件的效率与一致性"><a href="#硬件的效率与一致性" class="headerlink" title="硬件的效率与一致性"></a>硬件的效率与一致性</h2><p>现代计算机系统都有一层或多层的高速缓存来作为内存和处理器之间的缓冲，将运算需要使用的数据复制到缓存中，让计算快速进行，运算结束后从缓存同步到内存，这样处理器就不用等待缓慢的内存读写了。</p>
+<p>但这样有了一个新的问题：缓存一致性。在多路处理器系统中，每个处理器都有自己的高速缓存，而它们又共享同一主内存，这种系统叫共享内存多核系统。</p>
+<p><img src="https://i.loli.net/2020/05/18/jakwtmyhWT3BOGF.png" alt="image-20200518223313896" loading="lazy"></p>
+<p>除了增加高速缓存外，为了使处理器内部的运算单元尽量被充分使用，处理器可能对输入的代码进行乱序执行优化，处理器会将计算结果重组，保证该结果与顺序执行的结果一致，因此如果存在一个计算任务依赖另一个计算任务的中间结果，那么其顺序性不能靠代码的先后顺序来保证。与处理器的乱序优化类似，Java虚拟机的即时编译器也有指令重排序优化。</p>
+<h2 id="Java内存模型"><a href="#Java内存模型" class="headerlink" title="Java内存模型"></a>Java内存模型</h2><h3 id="主内存与工作内存"><a href="#主内存与工作内存" class="headerlink" title="主内存与工作内存"></a>主内存与工作内存</h3><p>Java内存模型的主要目的是定义程序中个中变量的访问规则，即关注在虚拟机中吧变量值存储到内存和从内存取出变量值的底层细节。这里说的变量包括实例字段、静态字段和构成数组对象的元素，但不包括局部变量和方法参数，因为后者是线程私有的，不存在竞争问题。</p>
+<p>Java内存模型规定了所有变量都存储在主内存中。每条线程还有自己的工作内存，它保存了被该线程使用的变量的主内存副本，线程对变量的所有操作都必须在工作内存中进行。不同线程之间也无法直接访问对方工作内存中的变量，线程间变量值的传递均需要通过主内存来完成。</p>
+<p><img src="https://i.loli.net/2020/05/19/I76PQuXMJmLHdEe.png" alt="image-20200519115204571" loading="lazy"></p>
+<h3 id="内存间交互操作"><a href="#内存间交互操作" class="headerlink" title="内存间交互操作"></a>内存间交互操作</h3><p>关于一个变量如何从主内存拷贝到工作内存又如何从工作内存同步回主内存这一类的实现细节，Java内存模型定义了以下8种操作。Java虚拟机实现时必须保证下面的操作都是原子的：</p>
+<ul>
+<li>lock(锁定)：作用于主内存的变量，它把一个变量标识为一条线程独占的状态。</li>
+<li>unlock(解锁)：作用于主内存的变量，它把一个处于锁定状态的变量释放出来，释放后的变量才可以被其他线程锁定。</li>
+<li>read(读取)：作用于主内存的变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的load动作使用。</li>
+<li>load(载入)：作用于工作内存的变量，它把read操作从主内存中得到的变量值放入工作内存的变量副本中。</li>
+<li>use(使用)：作用于工作内存的变量，它把工作内存中的一个变量的值传递给执行引擎，每当虚拟机遇到一个需要使用变量的值的字节码指令时会执行这个操作。</li>
+<li>assign(赋值)：作用于工作内存的变量，它会把一个执行引擎接收的值赋给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作。</li>
+<li>store(存储)：作用于工作内存的变量，它把工作内存中的一个变量的值传送给主内存中，以便随后的write操作使用。</li>
+<li>write(写入)：作用于主内存的变量，它把store操作从工作内存得到的变量的值放入主内存的变量中。</li>
+</ul>
+<p>如果要把一个变量从主内存拷贝到工作内存，那就要按顺序执行read和load操作，如果要把变量从工作内存同步回主内存，就要按顺序执行store和write操作。Java内存模型要求上述操作按顺序执行，但不要钱连续执行，也就是read和load操作间可以有别的指令。如对变量a、b进行访问时，一种可能出现的顺序就是read a、read b、load b、load a。</p>
+<p>Java内存模型还规定了在执行上述8中基本操作时必须满足的规则：</p>
+<ul>
+<li>不允许read和load、store和write操作之一单独出现，即不允许加载或同步工作到一半。</li>
+<li>不允许一个线程丢弃它最近的assign操作，即变量在工作内存中改变了之后，必须把改变化同步回主内存。</li>
+<li>不允许一个线程无原因地（无assign操作）把数据从工作内存同步到主内存中。</li>
+<li>一个新的变量只能在主内存中诞生，不允许在工作内存中直接使用一个未初始化(load或assign)的变量。</li>
+<li>一个变量在同一时刻只允许一条线程对其进行lock操作，但lock操作可以被同一条线程重复执行多次，多次lock之后必须要执行相同次数的unlock操作，变量才会解锁。</li>
+<li>如果对一个对象进行lock操作，那会清空工作内存中此变量的值，在执行引擎使用这个变量前，需要重新执行load或assign操作初始化变量的值。</li>
+<li>如果一个变量事先没有被lock，就不允许对它进行unlock操作，也不允许去unlock一个被其他线程锁住的变量。</li>
+<li>对一个变量执行unlock操作之前，必须将此变量同步回主内存中（执行store、write）。</li>
+</ul>
+<p>有如上8种内存访问操作以及规则限定，再加上对volatile的一些特殊规定，就已经完全确定了java程序中哪些内存访问操作是在并发下安全的。</p>
+<h3 id="对于volatile型变量的特殊规则"><a href="#对于volatile型变量的特殊规则" class="headerlink" title="对于volatile型变量的特殊规则"></a>对于volatile型变量的特殊规则</h3><p>关键字volatile可以说是Java虚拟机提供的最轻量级的同步机制。</p>
+<p>当一个变量被定义为volatile后，它将具备两个特性：第一个就是保证此变量对所有线程的可见性，就是指一条线程修改了这个变量的值，新值对于其他线程来说是可以立即得知的。而普通变量需要通过主内存完成线程间的传递；第二个就是禁止指令重排序优化，重排序优化是机器级的操作，也就是硬件级别的操作。重排序会打乱代码顺序执行，但会保证在执行过程中所有依赖赋值结果的地方都能获取到正确的结果，因此在一个线程的方法执行过程中无法感知到重排的操作影响，这也是“线程内表现为串行”的由来。</p>
+<p><img src="https://i.loli.net/2020/05/19/wcyqszaFiJu9lh5.png" alt="image-20200519182215684" loading="lazy"></p>
+<p>编译后，这段代码对instance变量赋值部分如下图所示：</p>
+<p><img src="https://i.loli.net/2020/05/19/4QG79OV8FLRpYoJ.png" alt="image-20200519182250093.png" loading="lazy"></p>
+<p>其实，有volatile修饰的变量，赋值后(mov %eax, 0x150(%esi))多执行了一个”lock addl $0x0, (%esp)”操作，这个操作相当于一个内存屏障：指令重排序时，不能把后面的指令重排序到内存屏障之前。</p>
+<p>另外，java内存模型对volatile变量有三条特殊规则：</p>
+<ul>
+<li><p>每次使用变量之前都必须先从主内存刷新最新的值，用于保证能看见其它线程对变量的修改；</p>
+</li>
+<li><p>每次对变量修改后都必须立刻同步到主内存中，用于保证其它线程可以看到自己的修改；</p>
+</li>
+<li><p>两个变量都是volatile的，将数据同步到内存的时候，先读的先写；</p>
+</li>
+</ul>
+<p>性能上，volatile同步机制的性能优于锁，读操作上性能消耗和普通变量没什么区别，但写操作可能慢一些，因为它需要在本地代码插入许多内存屏障指令来保证处理器不发生乱序执行。</p>
+<h3 id="针对long和double型变量的特殊规则"><a href="#针对long和double型变量的特殊规则" class="headerlink" title="针对long和double型变量的特殊规则"></a>针对long和double型变量的特殊规则</h3><p>Java内存模型要求lock、unlock、read、load、assign、use、store、write都具有原子性，但对于64位的数据类型(long和double)，定义了比较宽松的规定：允许虚拟机将没有被volatile修饰的64位数据的读写操作划分为两次32位的操作进行，即允许虚拟机实现自行选择是否要保证64位数据类型的load、store、read、write操作的原子性。</p>
+<h3 id="原子性、可见性与有序性"><a href="#原子性、可见性与有序性" class="headerlink" title="原子性、可见性与有序性"></a>原子性、可见性与有序性</h3><p><strong>原子性</strong></p>
+<p>我们大致可以认为基本数据类型的访问读写具备原子性的(long、double除外，无需该在意)。</p>
+<p>如果应用场景需要更大范围的原子性保证，Java内存模型还提供了lock、unlock操作来满足这个需求。虽然虚拟机没有把这两个操作直接开放给用户，但是提供了更高层次的字节码指令monitorenter和monitorexit，这两个字节码指令反映到Java代码中就是同步块。synchronized，因此同步块中的操作具备原子性的。</p>
+<p><strong>可见性</strong></p>
+<p>指当一个线程修改了共享变量的值，其他线程能够立即得知这个修改。volatile保证了多线程操作时变量的可见性，普通变量则不能保证这一点。</p>
+<p>除了volatile外，Java还有两个关键字能实现可见性：synchronized和final。</p>
+<p>同步块的可见性是因为：对一个变量执行unlock前，必须先把此变量同步回主内存中。final的可见性是：被final修饰的字段在构造器中一旦初始化完成，那么在其他线程中就能看到final字段的值。</p>
+<p><strong>有序性</strong></p>
+<p>如果在本线程内观察，所有的操作都是有序的；如果在一个线程中观察另一个线程，所有的操作都是无序的。前半句是”线程内表现为串行的语义”，后半句是”指令重排序”和”工作内存与主内存同步延迟”。</p>
+<p>Java提供volatile和synchronized关键字来保证线程之间操作的有序性，volatile本身包含了禁止指令重排序优化的语义，而synchronized是因为”一个变量在同一时刻只允许一条线程对其进行lock操作”。</p>
+<h3 id="先行发生原则"><a href="#先行发生原则" class="headerlink" title="先行发生原则"></a>先行发生原则</h3><p>如果Java内存模型的有序性只靠volatile和synchronized完成，那么有一些操作会很繁琐，所以，Java中有一个”先行发生”的原则。</p>
+<p>先行发生是Java内存模型中定义的两项操作之间的偏序关系，如果说操作A先行发生于操作B，也就是说发生操作B之前，操作A产生的影响能被操作B观察到，”影响”包括修改了内存中共享变量的值、发送了消息、调用了方法等。</p>
+<p>Java内存模型中的一些内置的先行发生关系：</p>
+<ul>
+<li>程序次序规则：在一个线程内，按照程序代码顺序，书写在前面的操作先行发生于书写在后面的操作。</li>
+<li>管程锁定规则：一个unlock操作先行发生与后面对同一个锁的lock操作。</li>
+<li>volatile变量规则：对一个volatile变量的写操作先行发生于后面对这个变量对读操作。</li>
+<li>线程启动规则：Thread对象对start()方法先行发生于此线程的每一个动作。</li>
+<li>线程终止规则：线程中的所有操作都先行发生于对此线程的终止检测，可以通过Thread.join()方法结束、Thread.isAlive()的返回值等手段检测到线程已经终止。</li>
+<li>线程中断规则：对线程interrupt()方法的调用先行发生于被中断线程的代码检测到中断事件的发生。</li>
+<li>对象终结规则：一个对象的初始化完成(构造函数执行结束)先行发生于它的finalize()方法的开始。</li>
+<li>传递性：如果操作A先行发生于操作B，操作B先行发生于操作C，那么操作A就先行发生于操作C。</li>
+</ul>
+<h2 id="Java与线程"><a href="#Java与线程" class="headerlink" title="Java与线程"></a>Java与线程</h2><h3 id="线程的实现"><a href="#线程的实现" class="headerlink" title="线程的实现"></a>线程的实现</h3><p>线程是比进程更轻量级的调度执行单位，线程的引入，可以把一个进程的资源分配和执行调度分开，各个线程既可以共享进程资源(内存地址、文件I/O等)，又可以独立调度(线程是CPU调度的基本单位)。</p>
+<p>实现线程主要有3种方式：</p>
+<p>1.使用内核线程实现</p>
+<p>内核线程(Kernel-Level Thread，KLT)就是直接由操作系统内核(Kernel)支持的线程，这种线程由内核完成线程切换，内核通过操纵调度器对线程进行调度，并负责将心线程的任务映射到各个处理器上。每个内核线程可以视为内核的一个分身，这样操作系统就有能力同时处理多件事情，支持多线程的内核叫做多线程内核。</p>
+<p>程序一般不会直接使用内核线程，而去使用内核线程的一种高级接口——轻量级进程(Light Weight Process，LWP)，轻量级进程就是我们所说的”线程”，每个轻量级进程都由一个内核线程支持，轻量级进程与内核线程之间1:1的关系称为一对一的线程模型。</p>
+<p>由于内核线程的支持，每个轻量级进程都称为一个独立的调度单元，即使有一个轻量级进程在系统调用中阻塞了，也不会影响整个进程继续工作，但是轻量级进程具有它的局限性：由于基于内核线程实现的，所以各种线程操作(创建、析构、同步)都需要进行系统调用。而系统调用的代价相对较高，需要在用户态(User Mode)和内核态(Kernel Mode)中来回切换；再一个就是每个轻量级进程都需要一个内核线程的支持，因此轻量级进程要消耗一定的内核资源(如内核线程的栈空间)，因此一个系统支持轻量进程的数量是有限的。</p>
+<p>2.使用用户线程实现</p>
+<p>广义上说，一个线程只要不是内核线程，就可以认为是用户线程(User Thread，UT)。所以，这么看的话，轻量级进程也属于用户线程，但轻量级进程的实现始终是建立在内核上的，许多操作都要进行系统调用，效率收到限制。</p>
+<p>狭义上的用户线程指完全建立在用户空间的线程库上，用户线程的建立、同步、销毁和调度完全在用户态中完成，不需要内核帮助。这种线程不需要切换到内核态，因此操作可以非常快速且低耗，支持规模更大的线程数。</p>
+<p>用户线程优势在于不需要系统内核支援，劣势也是在于没有系统内核支援。线程的创建、切换和调度都是需要考虑的问题，由于操作系统只把处理器资源分配到进程，如”阻塞如何处理”、”多处理器系统中如何将线程映射到其他处理器上”这类问题解决异常困难。现在使用用户线程的程序越来越少了，Java、Ruby等都曾使用过，但最后都放弃了。</p>
+<p>3.使用用户线程+轻量级进程混合实现</p>
+<p>这种混合实现下，既存在用户线程，也存在轻量级进程。用户线程还是完全建立在用户空间中，因此用户线程的创建、切换、析构等操作依然廉价，并且支持大规模的用户线程并发；操作系统提供支持的轻量级进程作为用户线程和内核线程之间的桥梁，这样可以使用内核提供的线程调度功能及处理器映射，并且用户线程的系统调用通过轻量级进程线程完成，大大降低了整个进程被完全阻塞的风险。</p>
+<p>4.Java线程的实现</p>
+<p>操作系统支持怎样的线程模型，很大程度上会影响上面 Java虚拟机的线程是怎样映射的，这一点在不同平台上很难达成一致，因此《Java虚拟机规范》中没有限定Java线程需要使用那种线程模型来实现。</p>
+<h3 id="Java线程调度"><a href="#Java线程调度" class="headerlink" title="Java线程调度"></a>Java线程调度</h3><p>线程调度是系统为线程分配处理器使用权的过程，调度主要方式有两种，分别是协同式线程调度和抢占式线程调度。</p>
+<p>协同式调度的多线程系统</p>
+<ul>
+<li><p>线程的执行时间由线程本身控制，线程把自己的工作执行完后，主动通知系统切换到另一个线程上。由于线程把自己的事情做完后才会进行线程切换，所以没什么线程同步的问题。</p>
+<p>缺点：线程执行时间不可由控制。如果一个线程有问题，一直不告知系统进行线程切换，那么程序就一直阻塞在那。</p>
+</li>
+</ul>
+<p>抢占式调度的多线程系统</p>
+<ul>
+<li><p>每个线程由系统分配执行时间，线程的切换不由线程本身决定(Java中，Thread.yield()方法可以让出执行时间，但要获取执行时间，线程本身是没有办法的)。</p>
+<p>这种实现方式下，线程的执行时间是系统可控的 ，也不会由一个线程导致整个进程阻塞的问题，Java的线程调度就是抢占式调度。</p>
+</li>
+</ul>
+<p>Java中虽然线程调度是系统完成的，但是我们可以使系统给某些进程多分配一些时间，另外的线程少分配一些。这项操作通过设置线程优先级来完成：Java中一共有10个级别的线程优先级，在两个线程同时Ready状态时，优先级越高的线程越容易被系统选择执行。</p>
+<p>但线程优先级不稳定，优先级可能被系统自行改变，当系统发现一个线程执行很频繁时，可能会越过线程优先级去为他分配执行时间，从而减少线程频繁切换带来的性能消耗。</p>
+<h3 id="状态转换"><a href="#状态转换" class="headerlink" title="状态转换"></a>状态转换</h3><p>Java语言定义了6种线程状态，在任意一个时间点，一个线程有且只有其中一种状态：</p>
+<ul>
+<li><p>新建(New)：创建后尚未启动的线程处于这种状态。</p>
+</li>
+<li><p>运行(Runable)：Runable包括了操作系统线程状态中的Running和Ready。(也就是处于此状态的线程可能正在执行，也可能正在等待着CPU为它分配时间执行)。</p>
+</li>
+<li><p>无限期等待(Waiting)：处于这种状态的线程不会被分配CPU执行时间，它们要等待被其他线程显示唤醒。以下方法会让线程进入无限期的等待：</p>
+<ul>
+<li>没有设置Timeout参数的Object.wait()方法</li>
+<li>没有设置Timeout参数的Thread.join()方法</li>
+<li>LockSupport.park()方法</li>
+</ul>
+</li>
+<li><p>限期等待(Timed Waiting)：处于这种状态的线程也不会被分配CPU时间，在一定时间后它们由系统自动唤醒。以下方法让线程进入限期等待：</p>
+<ul>
+<li>Thread.sleep()</li>
+<li>设置了Timeout参数的Object.wait()方法</li>
+<li>设置了Timeout参数的Thread.join()方法</li>
+<li>LockSupport.parkNanos()</li>
+<li>LockSupport.parkUntil()</li>
+</ul>
+</li>
+<li><p>阻塞(Blocked)：线程被阻塞。”阻塞状态”与”等待状态”的区别是：”阻塞状态”在等待着获取一个排它锁，这个时间将在另一个线程放弃这个锁的时候发生；”等待状态”是等待一段时间或唤醒的动作发生。</p>
+</li>
+<li><p>结束(Terminated)：已终止线程的状态，线程结束执行。</p>
+</li>
+</ul>
+<p><img src="https://i.loli.net/2020/05/19/5zG7eBvQkTgNfMJ.png" alt="image-20200519212052995" loading="lazy"></p>
+<h3 id="Java与协程"><a href="#Java与协程" class="headerlink" title="Java与协程"></a>Java与协程</h3><p>内核线程调度成本比较高昂，因为要进行响应中断，保护和恢复执行现场。当中断发生，线程A切换到线程B前，操作系统首先要把线程A的上下文数据妥善保护好，然后把寄存器、内存分页等恢复到线程B挂起时候的状态，这样线程B被重新激活后才能仿佛没有被挂起过。</p>
+<p>协程的主要优势是轻量，无论有栈协程还是无栈协程，都比传统内核线程轻量的多。不设置-Xss或-XX:ThreadStackSize，则在64位Linux上HotSpot的线程栈容量是1MB，但一个协程的栈通常在几百字节到几KB之间。</p>
+<p>但在Java语言上，比如HotSpot虚拟机，Java调用栈和本地调用栈是做在一起的，在协程中调用本地方法的话，切换协程可能影响整个线程，在这里，以后将会有一种叫纤程的东西来解决。Loom以后将会实现。</p>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>gzj</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://zzugzj.github.io/posts/dcd6417a/" title="第12章 Java内存模型与线程">https://zzugzj.github.io/posts/dcd6417a/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/posts/149dbda3/" rel="prev" title="第13章 线程安全与锁优化"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">第13章 线程安全与锁优化</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/posts/17958411/" rel="next" title="第10章 前端编译与优化"><span class="post-nav-text">第10章 前端编译与优化</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>点击按钮跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/zzugzj/zzugzj.github.io/issues?q=is:issue+第12章 Java内存模型与线程">GitHub Issues</a></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2020 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> gzj</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.3.0</span></div><div class="live_time"><span>本博客已运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-12-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
 }
-.post-body {
-  padding: 0 5rem;
-tablet()
-mobile()
-}
-.post-content {
-  padding: 20px 0px;
-}
-.post-meta {
-  font-size: 14px;
-  color: var(--hty-secondary-text-color);
-}
-.post-meta .icon {
-  margin-bottom: -1px;
-}
-.post-description {
-  font-weight: normal;
-  padding: 0.5rem;
-}
-.post-author {
-  display: flex;
-  justify-content: center;
-}
-.post-author .author-avatar {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  line-height: 0;
-}
-.post-author .author-avatar img {
-  border-radius: 50%;
-  height: 1rem;
-  width: 1rem;
-  padding: 2px;
-  border: 2px solid #d3d3d3;
-}
-.post-author .author-name {
-  margin-left: 0.5rem;
-  font-size: 1rem;
-}
-.post-meta-item-icon {
-  display: inline-block;
-  color: var(--text-color, --hty-secondary-text-color);
-}
-.post-meta-divider {
-  height: 25px;
-  color: var(--hty-secondary-text-color);
-  margin: 0 0.5rem;
-}
-.post-eof {
-  margin: 50px auto;
-  width: 50%;
-  height: 1px;
-  background: $blue;
-  opacity: 0.1;
-}
-.post-copyright {
-  font-size: 0.9rem;
-  margin: 2rem 0;
-  padding: 0.5rem 1rem;
-  border-left: 3px solid #ff5252;
-  background-color: var(--hty-bg-color);
-  list-style: none;
-  word-break: break-all;
-}
-.tag-name {
-  padding: 0 0.1rem;
-}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div><div class="aplayer no-destroy" id="aplayer" data-id="7840106285" data-server="tencent" data-type="playlist" data-fixed="true" data-theme="#0078E7" data-loop="all" data-order="list" data-preload="auto" data-volume="0.7" data-mutex data-lrctype="0" data-listmaxheight="340px" data-storagename="metingjs"></div></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>

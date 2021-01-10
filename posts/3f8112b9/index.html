@@ -1,74 +1,203 @@
-.post-block {
-  margin: 0 1rem;
-  padding: 1rem;
-  background-color: var(--post-block-bg-color);
-mobile()
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="gzj"><meta name="copyright" content="gzj"><meta name="generator" content="Hexo 5.3.0"><meta name="theme" content="hexo-theme-yun"><title>第7章 虚拟机类加载机制 | gzj-blogs</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link class="aplayer-style-marker" rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.css"><script class="aplayer-script-marker" src="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.js" defer></script><script class="meting-script-marker" src="https://cdn.jsdelivr.net/npm/meting@1/dist/Meting.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/pjax@latest/pjax.min.js" defer></script><script src="/jsax.js" defer></script><script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><link rel="alternate" href="/atom.xml" title="gzj-blogs" type="application/atom+xml"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"zzugzj.github.io","root":"/","title":"勿在浮沙筑高台","version":"1.3.0","mode":"auto","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"local_search":{"path":"/search.xml"},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="Java虚拟机把描述类的数据从Class文件加载到内存，并对数据进行校验、转换解析和初始化，最终形成可以被虚拟机直接使用的Java类型，这个过程称为虚拟机的类加载机制。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="第7章 虚拟机类加载机制">
+<meta property="og:url" content="https://zzugzj.github.io/posts/3f8112b9/index.html">
+<meta property="og:site_name" content="gzj-blogs">
+<meta property="og:description" content="Java虚拟机把描述类的数据从Class文件加载到内存，并对数据进行校验、转换解析和初始化，最终形成可以被虚拟机直接使用的Java类型，这个过程称为虚拟机的类加载机制。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://i.loli.net/2020/05/15/rxjaVKXoR7g3PhT.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/15/UqOW52icpQBDjSG.png">
+<meta property="og:image" content="https://i.loli.net/2020/05/16/s7uhBr8VdmKQEtg.png">
+<meta property="article:published_time" content="2021-01-01T14:49:13.000Z">
+<meta property="article:modified_time" content="2021-01-01T14:29:48.767Z">
+<meta property="article:author" content="gzj">
+<meta property="article:tag" content="Java虚拟机">
+<meta property="article:tag" content="学习笔记">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://i.loli.net/2020/05/15/rxjaVKXoR7g3PhT.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="gzj"><img width="96" loading="lazy" src="/images/avatar.jpg" alt="gzj"><span class="site-author-status" title="不想上班">😭</span></a><div class="site-author-name"><a href="/about/">gzj</a></div><a class="site-name" href="/about/site.html">gzj-blogs</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">14</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">3</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">4</span></a></div><a class="site-state-item hty-icon-button" href="/about" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-rss-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/zzugzj" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=1317412612" title="网易云音乐" target="_blank" style="color:#C20C0C"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-netease-cloud-music-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:1045643052@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-contrast-2-line"></use></svg></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A6%82%E8%BF%B0"><span class="toc-number">1.</span> <span class="toc-text">概述</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E7%9A%84%E6%97%B6%E6%9C%BA"><span class="toc-number">2.</span> <span class="toc-text">类加载的时机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E7%9A%84%E8%BF%87%E7%A8%8B"><span class="toc-number">3.</span> <span class="toc-text">类加载的过程</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8A%A0%E8%BD%BD"><span class="toc-number">3.1.</span> <span class="toc-text">加载</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%AA%8C%E8%AF%81"><span class="toc-number">3.2.</span> <span class="toc-text">验证</span></a><ol class="toc-child"><li class="toc-item toc-level-5"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E6%A0%BC%E5%BC%8F%E9%AA%8C%E8%AF%81"><span class="toc-number">3.2.1.</span> <span class="toc-text">文件格式验证</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%85%83%E6%95%B0%E6%8D%AE%E9%AA%8C%E8%AF%81"><span class="toc-number">3.2.2.</span> <span class="toc-text">元数据验证</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E5%AD%97%E8%8A%82%E7%A0%81%E9%AA%8C%E8%AF%81"><span class="toc-number">3.2.3.</span> <span class="toc-text">字节码验证</span></a></li><li class="toc-item toc-level-5"><a class="toc-link" href="#%E7%AC%A6%E5%8F%B7%E5%BC%95%E7%94%A8%E9%AA%8C%E8%AF%81"><span class="toc-number">3.2.4.</span> <span class="toc-text">符号引用验证</span></a></li></ol></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%87%86%E5%A4%87"><span class="toc-number">3.3.</span> <span class="toc-text">准备</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%A7%A3%E6%9E%90"><span class="toc-number">3.4.</span> <span class="toc-text">解析</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">3.5.</span> <span class="toc-text">初始化</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8"><span class="toc-number">4.</span> <span class="toc-text">类加载器</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%B1%BB%E5%92%8C%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8"><span class="toc-number">4.1.</span> <span class="toc-text">类和类加载器</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8F%8C%E4%BA%B2%E5%A7%94%E6%B4%BE%E6%A8%A1%E5%9E%8B"><span class="toc-number">4.2.</span> <span class="toc-text">双亲委派模型</span></a></li></ol></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://zzugzj.github.io/posts/3f8112b9/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="gzj"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="gzj-blogs"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">第7章 虚拟机类加载机制</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <span class="post-meta-icon-text">发表于</span> <time title="创建时间：2021-01-01 22:49:13" itemprop="dateCreated datePublished" datetime="2021-01-01T22:49:13+08:00">2021-01-01</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-file-word-line"></use></svg></span> <span title="本文字数">5.2k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-timer-line"></use></svg></span> <span title="阅读时长">18m</span></span></span><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3Java%E8%99%9A%E6%8B%9F%E6%9C%BA%E8%AF%BB%E4%B9%A6%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">深入理解Java虚拟机读书笔记</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/Java%E8%99%9A%E6%8B%9F%E6%9C%BA/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">Java虚拟机</span></a><a class="tag" href="/tags/%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">学习笔记</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h3 id="概述"><a href="#概述" class="headerlink" title="概述"></a>概述</h3><p>Java虚拟机把描述类的数据从Class文件加载到内存，并对数据进行校验、转换解析和初始化，最终形成可以被虚拟机直接使用的Java类型，这个过程称为虚拟机的类加载机制。</p>
+<p>Java语言中，类型的加载、连接和初始化过程都是在程序运行期间完成的，这种策略让Java语言进行提前编译会面临额外的困难，也会让类加载时稍微增加一些性能开销，但却为了Java应用提供了极高的扩展性和灵活性。</p>
+<p>两个约定：</p>
+<ul>
+<li>实际情况中，每个Class文件都有代表着Java语言中的一个类或接口的可能，后文中直接对“类型”的描述都同时蕴含着类和接口的可能性。</li>
+<li>本章提到的Class文件也并非特指某个具体存在于具体磁盘中的文件，而是一串二进制字节流，无论其以何种形式存在，包括但不限于磁盘文件、网络、数据库、内存和动态生成等。</li>
+</ul>
+<h3 id="类加载的时机"><a href="#类加载的时机" class="headerlink" title="类加载的时机"></a>类加载的时机</h3><p>一个类型从被加载到虚拟机内存中开始，到卸载出内存为止，它的整个生命周期将会经历加载(Loading)、验证(Verification)、准备(Preparation)、解析(Resolution)、初始化(Initialization)、使用(Using)和卸载(Unloading)七个阶段，其中验证、准备、解析三个部分统称为连接(Linking)。</p>
+<center>类的生命周期</center>
+
+<p><img src="https://i.loli.net/2020/05/15/rxjaVKXoR7g3PhT.png" alt="image-20200515152606704.png" loading="lazy"></p>
+<p>类型的加载过程必须按加载、验证、准备、初始化和卸载这五个阶段<strong>开始</strong>(这些阶段通常是互相交叉的混合运行，在一个阶段执行的过程中调用另一个阶段)，但解析阶段不一定：它在某些情况下可以在初始化阶段后再开始，这是为了支持Java语言的运行时绑定特性。</p>
+<p>《Java虚拟机规范》严格规定了六种情况必须立即对类进行初始化（加载等步骤在此前开始）：</p>
+<ol>
+<li>遇到new、getstatic、putstatic或invokestatic这四条字节码指令时，若类型没有进行初始化，则要先触发其初始化阶段。生成这四条指令的场景有：<ul>
+<li>使用new关键字实例化对象。</li>
+<li>读取或设置一个类型的静态字段的时候(被final修饰、在编译期就把结果放入常量池的静态类型除外)。</li>
+<li>调用一个类型的静态方法的时候。</li>
+</ul>
+</li>
+<li>使用java.lang.reflect包的方法对类型进行反射调用的时候，如果没有类型进行初始化，则需要先触发其初始化。</li>
+<li>当初始化类的时候，如果发现其父类还没有进行过初始化，则需要先触发其父类的初始化。</li>
+<li>当虚拟机启动时，用户指定一个要运行的主类(包含main()方法的那个类)，虚拟机会先初始化这个主类。</li>
+<li>当使用JDK7新加入的动态语言支持时，如果一个java.lang.invoke.MethodHandle实例最后的解析结果为REF_getStatic、REF_putStatic、REF_invokeStatic、REF_newInvokeSpecial四种类型的方法句柄，并且这个方法句柄对应的类没有进行过初始化，则需要先触发其初始化。</li>
+<li>当一个接口中定义了JDK8新加入的默认方法(被default关键字修饰的接口方法)时，如果有这个接口的实现类发生了初始化，那该接口就要在其之前被初始化。</li>
+</ol>
+<p>这六种场景中的行为称为对一个类型进行主动引用。除此之外，所有引用类型的方式都不会触发初始化，称为被动引用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">NotInitialization</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        System.out.println(SubClass.value);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SuperClass</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;superclass&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">int</span> value = <span class="number">123</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">SubClass</span> <span class="keyword">extends</span> <span class="title">SuperClass</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;subclass&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这段代码运行后，只会输出”superclass“。对于静态字段， 只有直接定义这个字段的类才会被初始化，子类引用父类的静态字段，只会触发父类的初始化而子类不会初始化。子类是否加载和验证，取决于虚拟机实现。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">NotInitialization</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        SuperClass[] sca = <span class="keyword">new</span> SuperClass[<span class="number">10</span>];</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>运行发现什么也没输出，说明没有初始化SuperClass，但这段代码触发了另一个名为[LSuperClass类的初始化，它是虚拟机自动生成的，直接继承Object的子类，创建动作由字节码指令newarray触发。</p>
+<p>这个类代表一个元素类型为SuperClass的一维数组，数组应有的属性和方法(用户可直接使用的只有被public修饰的length属性和clone()方法)都在这个类里。Java对数组访问比较安全，很大程度上因为这个类包装了数组元素的访问。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">ConstClass</span> </span>&#123;</span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;constclass&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">final</span> String HELLOWORLF = <span class="string">&quot;hello world&quot;</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">NotInitialization</span> </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        System.out.println(ConstClass.HELLOWORLF);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>输出“hello world”，因为虽然在Java源码中确实引用了ConstClass类的HELLOWORLD，但其实编译阶段通过常量传播优化，已经将此常量的值“hello world”存储在NotInitialization类的常量池中，以后NotInitialization对常量HELLOWORLD的引用，实际上都是对自身常量池的引用，这两个类在编译成class文件后就没有任何联系了。</p>
+<center>反编译后的类</center>
+
+<p><img src="https://i.loli.net/2020/05/15/UqOW52icpQBDjSG.png" alt="image-20200515193845010" loading="lazy"></p>
+<p>接口的加载过程与类加载稍有不同，编译器仍然会为接口生成&lt;clinit&gt;()类构造器，用于初始化接口定义的成员变量，但接口与类不同的地方是，接口在初始化时，不要求其父接口全部完成初始化，只有真正使用到父接口时，才会初始化。</p>
+<h3 id="类加载的过程"><a href="#类加载的过程" class="headerlink" title="类加载的过程"></a>类加载的过程</h3><h4 id="加载"><a href="#加载" class="headerlink" title="加载"></a>加载</h4><p>加载阶段是整个类加载过程的一个阶段，在加载阶段，虚拟机需要完成三件事情：</p>
+<ul>
+<li>通过一个类的全限定名来获取定义此类的二进制字节流。</li>
+<li>将这个字节流所代表的静态存储结构转化为方法区的运行时数据结构。</li>
+<li>在内存中生成一个代表这个类的java.lang.Class对象，作为方法区这个类的各种数据的访问入口。</li>
+</ul>
+<p>第一条它没定义需要从哪里获取二进制字节流，就给了我们许多操作空间，比如从zip压缩包读取(JAR, WAR)，运行时计算生成(动态代理)，其他文件生成(JSP)等等。</p>
+<p>相对于类加载过程的其他阶段，非数组类型的加载阶段(准确说是加载阶段中获取类的二进制字节流的动作)是开发人员可控性最强的阶段。加载阶段既可以使用Java虚拟机里内置的引导类加载器完成，也可以使用用户自定义的类加载器去完成。</p>
+<p>数组类则不同，数组类本身不通过类加载器创建，它是由Java虚拟机在内存中动态构造出来的。数组类与类加载器有密切关系，因为数组的元素最终还要类加载器来完成加载。一个数组类(简称C)的创建过程遵循以下规则：</p>
+<ul>
+<li>如果数组的组件类型是引用类型，那就递归采用本节定义的加载过程去加载这个组件类型，数组C将被标识在加载该组件类型的类加载器的类名称空间上。</li>
+<li>如果数组的组件类型不是引用类型，Java虚拟机将会把数组C标记为与引导类加载器关联。</li>
+<li>数组类的可访问性与它的组件类型的可访问性一致，如果组件类型不是引用类型，它的数组类的可访问性将默认为public，可被所有的类和接口访问。</li>
+</ul>
+<p>加载结束后，Java虚拟机外部的二进制字节流就按照虚拟机设定的格式存储在方法区中了。类型数据妥善安置在方法区后，会在Java堆内存中实例化一个java.lang.Class类的对象，这个对象将作为程序访问方法区中类型数据的外部接口。</p>
+<p>加载阶段与连接阶段的部分动作(如一部分字节码文件格式的验证动作)是交叉进行的。</p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><p>验证是连接阶段的第一步，这一阶段的目的是确保Class文件的字节流包含的信息符合《Java虚拟机规范》的约束，确保这些信息被当作代码运行后不会危害虚拟机自身的安全。</p>
+<p>Java语言相对安全，纯粹的Java代码无法做到将对象转型为未实现的类型或访问数组边界外的区域，但使用字节码是可以实现的，所以验证字节码是Java虚拟机保护自身的一项必要措施。</p>
+<p>验证阶段很重要，这个阶段是否严谨，直接决定了Java虚拟机能否承受恶意代码的攻击。</p>
+<p>验证阶段大致分为以下四个阶段的检验动作：文件格式验证、元数据验证、字节码验证和符号引用验证：</p>
+<h5 id="文件格式验证"><a href="#文件格式验证" class="headerlink" title="文件格式验证"></a>文件格式验证</h5><p>验证字节流是否符合Class文件格式的规范，并能被当前版本虚拟机处理。比如：是否以0xCAFEBABE开头，主次版本号是否在当前虚拟机接受范围内。只有通过这个阶段验证后，字节流才允许进入Java虚拟机内存的方法区进行存储，后面三个验证阶段都是基于方法区的存储结构上进行的，不会再读取、操作字节流了。</p>
+<h5 id="元数据验证"><a href="#元数据验证" class="headerlink" title="元数据验证"></a>元数据验证</h5><p>第二阶段是对字节码描述的信息进行语义分析，保证其描述的信息符合《Java语言规范》的要求。比如验证是否有父类，父类是否继承了不允许被继承的类等等。</p>
+<h5 id="字节码验证"><a href="#字节码验证" class="headerlink" title="字节码验证"></a>字节码验证</h5><p>第三阶段是整个验证过程最复杂的一个阶段。主要目的是通过数据流的分析和控制流分析，确定程序语义是合法的、符合逻辑的。对元数据信息的数据类型校验完毕后，就要对类的方法体(Class文件的Code属性)进行校验分析。由于数据流分析和控制流分析的复杂性，为了避免执行时间消耗在字节码验证阶段 ，在jdk6后的javac编译器和Java虚拟机里进行了联合优化，把尽可能多的校验辅助措施挪到javac编译器里进行。</p>
+<h5 id="符号引用验证"><a href="#符号引用验证" class="headerlink" title="符号引用验证"></a>符号引用验证</h5><p>最后一个阶段的校验行为发生在虚拟机将符号引用转化为直接引用的时候，这个转化在解析阶段发生。符号引用验证可以看作是对类自身以外(常量池的各种符号引用)的各类信息进行匹配性校验，比如校验符号引用中通过字符串描述的全限定名能否找到指定的类等等。</p>
+<p>验证阶段对于虚拟机的类加载机制来说，是非常重要，但不是必须执行的阶段。只要通过验证，其后就对程序运行期没有影响了。如果代码被反复使用和验证过，那么就可以考虑使用-Xverify:none参数来关闭大部分的验证措施，缩短虚拟机类加载时间。</p>
+<h4 id="准备"><a href="#准备" class="headerlink" title="准备"></a>准备</h4><p>准备阶段是正式为定义的变量(即静态变量，被static修饰的变量)分配内存并设置类变量初始值的阶段。</p>
+<p>在准备阶段，进行内存分配的仅包括类变量，而不包括实例变量，实例变量将会在对象实例化时随着对象一起分配在Java堆中。</p>
+<p>另外，这里说的初始值“通常情况”下是数据结构的零值，比如一个类变量定义为<code>public static int value = 123; </code>，那么变量value在准备阶段后的初始值为0而不是123，因为这时尚未开始执行任何Java方法，而把value赋值为123的putstatic指令是程序被编译后，存放于类构造器&lt;clinit&gt;()方法中，所以把value赋值为123的动作要到类的初始化阶段才会被执行。</p>
+<center>基本数据类型的零值</center>
+
+<table>
+<thead>
+<tr>
+<th>数据类型</th>
+<th>零值</th>
+<th>数据类型</th>
+<th>零值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>int</td>
+<td>0</td>
+<td>boolean</td>
+<td>false</td>
+</tr>
+<tr>
+<td>long</td>
+<td>0L</td>
+<td>float</td>
+<td>0.0f</td>
+</tr>
+<tr>
+<td>short</td>
+<td>(short)0</td>
+<td>double</td>
+<td>0.0d</td>
+</tr>
+<tr>
+<td>char</td>
+<td>‘\u0000’</td>
+<td>reference</td>
+<td>null</td>
+</tr>
+<tr>
+<td>byte</td>
+<td>(byte)0</td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>上面提到”通常情况“是零值，那就有特殊情况，比如类字段的字段属性表存在ConstantValue属性，那在准备阶段变量值就会被初始化为ConstantValue属性所指定的初始值，比如<code>public static final int value = 123;</code>编译时javac将会为value生成ConstantValue属性，虚拟机就会根据ConstantValue的设置将value赋值为123。</p>
+<h4 id="解析"><a href="#解析" class="headerlink" title="解析"></a>解析</h4><p>解析阶段是Java虚拟机将常量池内的符号引用替换为直接引用的过程。</p>
+<ul>
+<li>符号引用：符号引用以一组符号来描述所引用的目标，符号引用可以是任何形式的字面量。符号引用与虚拟机的内存布局无关，引用的目标不一定是已经加载到虚拟机内存当中的内容。各种虚拟机实现的内存布局可以各不相同，但他们所能接收的符号引用必须是一致的。</li>
+<li>直接引用：直接引用是可以直接指向目标的指针、相对偏移量或者是一个能间接定位到目标的句柄，直接引用和虚拟机实现的内存布局直接相关，同一个符号引用在不同虚拟机实例上翻译出来的直接引用一般不会相同。</li>
+</ul>
+<p>《Java虚拟机规范》中没有定义解析阶段发生的时间，只要求在执行某些用于操作符号引用的字节码指令前，先对它们所使用的符号引用进行解析。对方法或者字段的访问，也会在解析阶段对它们的可访问性(public、private等)进行检查。</p>
+<p>对同一个符号引用进行多次解析请求是很常见的，除invokedynamic外，虚拟机实现可以对第一次解析的结果进行缓存，比如运行时直接引用常量池的记录，并把常量标识为已解析状态，避免重复解析。不过对于invokedynamic指令，就不会这样了，invokedynamic指令的目的本来就是用于动态语言支持，它对应的引用称为“动态调用点限定符”，这里动态的含义是指必须等到程序实际运行这条指令时，解析动作才执行。其他的可能刚刚完成加载阶段，就提前解析。</p>
+<h4 id="初始化"><a href="#初始化" class="headerlink" title="初始化"></a>初始化</h4><p>类的初始化阶段是类加载过程最后一个步骤。直到初始化阶段，Java虚拟机才真正开始执行类中编写的Java程序代码，将主导权交给应用程序。</p>
+<p>进行准备阶段时，变量已经赋过一次系统要求的初始零值，而在初始化阶段，才开始初始化类变量和其他资源。初始化阶段就是执行类构造器&lt;clinit&gt;()方法的过程。&lt;clinit&gt;()并不是程序员在Java代码中直接编写的方法，它是javac编译器的自动生成物。</p>
+<ul>
+<li>&lt;clinit&gt;() 方法是由编译器自动收集类中的所有类变量的赋值动作和静态语句块中的语句合并产生的，编译器收集的顺序是由语句在源文件中出现的顺序决定的，静态语句块只能访问到定义在静态语句块之前的变量，定义在它之后的变量，在前面的静态语句块可以赋值，但不能访问。</li>
+<li>&lt;clinit&gt;()方法与类的构造函数(即在虚拟机视角中的实例构造器&lt;init&gt;()方法)不同，它不需要显式的调用父类构造器，Java虚拟机会保证在子类的&lt;clinit&gt;()方法执行前，父类的&lt;clinit&gt;()方法已经执行完毕。因此在Java虚拟机中第一个执行的&lt;clinit&gt;()方法的类型肯定是java.lang.Object。</li>
+<li>由于父类的&lt;clinit&gt;()先执行，也就意味着父类中定义的静态语句块要优于子类的变量赋值操作。</li>
+<li>&lt;clinit&gt;()方法对于类或接口来说不是必需的，如果一个类中没有静态语句块，也没有对变量的赋值操作，那么编译器可以不为这个类生成&lt;clinit&gt;()方法。</li>
+<li>接口不能有静态语句块，但有变量初始化的赋值操作，所以也有&lt;clinit&gt;()方法。但接口执行&lt;clinit&gt;()时不用先执行父接口的&lt;clinit&gt;()方法。父接口定义的变量被使用时，父接口才被初始化。</li>
+<li>Java虚拟机保证一个类的&lt;clinit&gt;()在多线程环境被正确的加锁同步。</li>
+</ul>
+<h3 id="类加载器"><a href="#类加载器" class="headerlink" title="类加载器"></a>类加载器</h3><h4 id="类和类加载器"><a href="#类和类加载器" class="headerlink" title="类和类加载器"></a>类和类加载器</h4><p>对于任意一个类，都必须由加载它的类加载器和这个类本身一起共同确立其在Java虚拟机中的唯一性，每一个类加载器，都有一个独立的类名称空间。比较两个类是否相等(比如equals()、isInstance()、instanceof等)，只有这两个类是由同一个类加载器加载的前提下才有意义，否则，即使这两个类来源于同一个class文件，被同一个虚拟机加载，只要加载它们的类加载器不同，这两个类必不相等。</p>
+<h4 id="双亲委派模型"><a href="#双亲委派模型" class="headerlink" title="双亲委派模型"></a>双亲委派模型</h4><p>在虚拟机角度看，只存在两种不同的类加载器：一种是启动类加载器(Bootstrap ClassLoader)，这个加载器使用C++实现，是虚拟机自身一部分；另一个是其他所有类的加载器，这些类加载器由Java实现，继承自Object。</p>
+<p>在开发人员角度看，类加载器就应当划分的更细致一些。自JDK1.2来，Java一直保持这三层类加载器、双亲委派的类加载架构。</p>
+<ul>
+<li>启动类加载器：这个类加载器负责加载存放在<JAVA_HOME>\lib目录，或被-Xbootclasspath指定的路径，而且是Java虚拟机能够识别的(按照文件名识别，如rt.jar、tools.jar等)类库加载到虚拟机内存。</li>
+<li>扩展类加载器(Extension Class Loader)：这个类加载器是在类sun.misc.Launcher$ExtClassLoader中实现的，负责加载jre/lib/ext的类库。允许用户将具有通用性的类库放置在ext目录里以扩展JavaSE的功能。</li>
+<li>应用程序类加载器(Application Class Loader)：也叫系统类加载器，负责加载用户类路径下的所有类库，开发者统一也可以直接在代码中使用这个类加载器。</li>
+</ul>
+<p>JDK9之前的Java应用都是这三类加载器互相配合完成加载的，用户还可以加入自定义的类加载器，如增加除了磁盘位置外的Class文件来源，或通过类加载器实现类的隔离、重载等功能。</p>
+<p><img src="https://i.loli.net/2020/05/16/s7uhBr8VdmKQEtg.png" alt="image-20200516220011082.png" loading="lazy"></p>
+<p>双亲委派模型除了顶层的启动类加载器外，其余的类加载器都应有自己的父类加载器。这里的父子关系是用组合关系来复用。</p>
+<p>工作过程是：如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成，每个层次的类加载器都是如此，因此所有的加载请求最终都应该传送到最顶层的启动类加载器中，只有当父加载器反馈自己无法完成这个加载请求时，子加载器才会自己尝试完成加载。</p>
+<p>好处就是Java类随着它的类加载器一起具备了一种带有优先级的层次关系，无论哪个加载器要加载这个类，都要先让最顶端的加载器去尝试加载这个类，因此Object类在各种类加载器环境中能保证是同一个类。</p>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>gzj</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://zzugzj.github.io/posts/3f8112b9/" title="第7章 虚拟机类加载机制">https://zzugzj.github.io/posts/3f8112b9/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/posts/2ba62a63/" rel="prev" title="Java基础重难点"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">Java基础重难点</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/posts/a8f159ba/" rel="next" title="第3章 垃圾收集器与内存分配策略"><span class="post-nav-text">第3章 垃圾收集器与内存分配策略</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>点击按钮跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/zzugzj/zzugzj.github.io/issues?q=is:issue+第7章 虚拟机类加载机制">GitHub Issues</a></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2020 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> gzj</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.3.0</span></div><div class="live_time"><span>本博客已运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-12-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
 }
-.post-body {
-  padding: 0 5rem;
-tablet()
-mobile()
-}
-.post-content {
-  padding: 20px 0px;
-}
-.post-meta {
-  font-size: 14px;
-  color: var(--hty-secondary-text-color);
-}
-.post-meta .icon {
-  margin-bottom: -1px;
-}
-.post-description {
-  font-weight: normal;
-  padding: 0.5rem;
-}
-.post-author {
-  display: flex;
-  justify-content: center;
-}
-.post-author .author-avatar {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  line-height: 0;
-}
-.post-author .author-avatar img {
-  border-radius: 50%;
-  height: 1rem;
-  width: 1rem;
-  padding: 2px;
-  border: 2px solid #d3d3d3;
-}
-.post-author .author-name {
-  margin-left: 0.5rem;
-  font-size: 1rem;
-}
-.post-meta-item-icon {
-  display: inline-block;
-  color: var(--text-color, --hty-secondary-text-color);
-}
-.post-meta-divider {
-  height: 25px;
-  color: var(--hty-secondary-text-color);
-  margin: 0 0.5rem;
-}
-.post-eof {
-  margin: 50px auto;
-  width: 50%;
-  height: 1px;
-  background: $blue;
-  opacity: 0.1;
-}
-.post-copyright {
-  font-size: 0.9rem;
-  margin: 2rem 0;
-  padding: 0.5rem 1rem;
-  border-left: 3px solid #ff5252;
-  background-color: var(--hty-bg-color);
-  list-style: none;
-  word-break: break-all;
-}
-.tag-name {
-  padding: 0 0.1rem;
-}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div><div class="aplayer no-destroy" id="aplayer" data-id="7840106285" data-server="tencent" data-type="playlist" data-fixed="true" data-theme="#0078E7" data-loop="all" data-order="list" data-preload="auto" data-volume="0.7" data-mutex data-lrctype="0" data-listmaxheight="340px" data-storagename="metingjs"></div></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>
