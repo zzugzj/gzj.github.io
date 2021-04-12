@@ -1,0 +1,128 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="gzj"><meta name="copyright" content="gzj"><meta name="generator" content="Hexo 5.3.0"><meta name="theme" content="hexo-theme-yun"><title>MySQL幻读和可重复读 | gzj-blogs</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link class="aplayer-style-marker" rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.css"><script class="aplayer-script-marker" src="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.js" defer></script><script class="meting-script-marker" src="https://cdn.jsdelivr.net/npm/meting@1/dist/Meting.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/pjax@latest/pjax.min.js" defer></script><script src="/jsax.js" defer></script><script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><link rel="alternate" href="/atom.xml" title="gzj-blogs" type="application/atom+xml"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"zzugzj.github.io","root":"/","title":"勿在浮沙筑高台","version":"1.3.0","mode":"auto","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"local_search":{"path":"/search.xml"},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="当同一查询在不同时间产生不同的行集时，在事务内就会发生所谓的幻象问题。 例如，如果SELECT执行两次，但是第二次返回的行却不是第一次返回，则该行是“幻像”行，还有select没有的数据，insert时失">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MySQL幻读和可重复读">
+<meta property="og:url" content="https://zzugzj.github.io/posts/9617db49/index.html">
+<meta property="og:site_name" content="gzj-blogs">
+<meta property="og:description" content="当同一查询在不同时间产生不同的行集时，在事务内就会发生所谓的幻象问题。 例如，如果SELECT执行两次，但是第二次返回的行却不是第一次返回，则该行是“幻像”行，还有select没有的数据，insert时失">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/image-20210412220546067.png">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/image-20210412220604432.png">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/c0243ecb466b6f3c7c30c26bb26c757d.png">
+<meta property="article:published_time" content="2021-04-12T13:50:26.530Z">
+<meta property="article:modified_time" content="2021-04-12T14:39:54.873Z">
+<meta property="article:author" content="gzj">
+<meta property="article:tag" content="MySQL">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/image-20210412220546067.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="gzj"><img width="96" loading="lazy" src="/images/avatar.jpg" alt="gzj"><span class="site-author-status" title="不想上班">😭</span></a><div class="site-author-name"><a href="/about/">gzj</a></div><a class="site-name" href="/about/site.html">gzj-blogs</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">17</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">5</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">6</span></a></div><a class="site-state-item hty-icon-button" href="/about" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-rss-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/zzugzj" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=1317412612" title="网易云音乐" target="_blank" style="color:#C20C0C"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-netease-cloud-music-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:1045643052@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-contrast-2-line"></use></svg></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%B9%BB%E8%AF%BB%E5%92%8C%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB"><span class="toc-number">1.</span> <span class="toc-text">幻读和可重复读</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E4%BA%8E%E5%BF%AB%E7%85%A7%E8%AF%BB%E5%92%8C%E5%BD%93%E5%89%8D%E8%AF%BB"><span class="toc-number">2.</span> <span class="toc-text">关于快照读和当前读</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#SERIALIZABLE%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E5%A6%82%E4%BD%95%E8%A7%A3%E5%86%B3%E5%B9%BB%E8%AF%BB"><span class="toc-number">3.</span> <span class="toc-text">SERIALIZABLE隔离级别如何解决幻读</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E4%BA%8EMySQL%E9%9A%94%E7%A6%BB%E7%BA%A7%E5%88%AB%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AFRR"><span class="toc-number">4.</span> <span class="toc-text">关于MySQL隔离级别为什么是RR</span></a></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://zzugzj.github.io/posts/9617db49/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="gzj"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="gzj-blogs"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">MySQL幻读和可重复读</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <span class="post-meta-icon-text">发表于</span> <time title="创建时间：2021-04-12 21:50:26" itemprop="dateCreated datePublished" datetime="2021-04-12T21:50:26+08:00">2021-04-12</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-file-word-line"></use></svg></span> <span title="本文字数">1.4k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-timer-line"></use></svg></span> <span title="阅读时长">5m</span></span></span><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">数据库</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/MySQL/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">MySQL</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><h3 id="幻读和可重复读"><a href="#幻读和可重复读" class="headerlink" title="幻读和可重复读"></a>幻读和可重复读</h3><ol>
+<li>由于很多人容易搞混 <code>不可重复读</code> 和 <code>幻读</code>，这两者确实非常相似。<ul>
+<li>但 <code>不可重复读</code> 主要是说多次读取一条记录, 发现该记录中某些列值被修改过。</li>
+<li>而 <code>幻读</code> 主要是说多次读取一个范围内的记录(包括直接查询所有记录结果或者做聚合统计), 发现结果不一致(标准档案一般指记录增多, 记录的减少应该也算是幻读)。(可以参考<a target="_blank" rel="noopener" href="https://dev.mysql.com/doc/refman/5.7/en/innodb-next-key-locking.html">MySQL官方文档对 Phantom Rows 的介绍</a>)</li>
+</ul>
+</li>
+<li>其实对于 <code>幻读</code>, MySQL的InnoDB引擎默认的<code>RR</code>级别已经通过<code>MVCC自动帮我们解决了</code>, 所以该级别下, 你也模拟不出幻读的场景; 退回到 <code>RC</code> 隔离级别的话, 你又容易把<code>幻读</code>和<code>不可重复读</code>搞混淆, 所以这可能就是比较头痛的点吧!<br>具体可以参考《高性能MySQL》对 <code>RR</code> 隔离级别的描述, 理论上RR级别是无法解决幻读的问题, 但是由于InnoDB引擎的RR级别还使用了MVCC, 所以也就避免了幻读的出现!</li>
+</ol>
+<p>MVCC虽然解决了<code>幻读</code>问题, 但严格来说只是解决了<strong>部分</strong>幻读问题。</p>
+<p>比如可能会发生这种情况：</p>
+<p>事务A：</p>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/image-20210412220546067.png" alt="image-20210412220546067" loading="lazy"></p>
+<p>另外一个直接执行：</p>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/image-20210412220604432.png" alt="image-20210412220604432" loading="lazy"></p>
+<p>就会发生图片上的情况。</p>
+<p>关于第5步可以读出最新数据而且第6步无法插入，是因为select分为当前读和快照读，普通select不加for update是快照读，insert、delete、update都是当前读。</p>
+<h3 id="关于快照读和当前读"><a href="#关于快照读和当前读" class="headerlink" title="关于快照读和当前读"></a>关于快照读和当前读</h3><ul>
+<li><p>快照读, 读取专门的快照</p>
+<pre class="language-none"><code class="language-none">简单的select操作即可(不需要加锁,如: select ... lock in share mode, select ... for update)</code></pre>
+<p>针对的也是select操作</p>
+</li>
+<li><p>当前读, 读取最新版本的记录</p>
+<pre class="language-none"><code class="language-none">select ... lock in share mode
+select ... for update</code></pre>
+<p>针对如下操作, 会让如下操作阻塞:    </p>
+<pre class="language-none"><code class="language-none">insert
+update
+delete</code></pre></li>
+<li><p>在RR级别下, 快照读是通过MVVC(多版本控制)和undo log来实现的, 当前读是通过手动加record lock(记录锁)和gap lock(间隙锁)来实现的。所以从上面的显示来看，如果需要实时显示数据，还是需要通过加锁来实现。这个时候会使用next-key技术来实现。</p>
+</li>
+</ul>
+<h3 id="SERIALIZABLE隔离级别如何解决幻读"><a href="#SERIALIZABLE隔离级别如何解决幻读" class="headerlink" title="SERIALIZABLE隔离级别如何解决幻读"></a>SERIALIZABLE隔离级别如何解决幻读</h3><p>RR隔离级别可以使用对记录手动加 X锁 的方法消除幻读，比如select … for update等可以加锁，存在则会被加行（X）锁，如果不存在，则会加 next-lock key / gap 锁（范围行锁），即记录存在与否，mysql 都会对记录应该对应的索引加锁，其他事务是无法再获得做操作的。</p>
+<p>另外，使用SERIALIZABLE 隔离级别也可以完全解决幻读，它是对所有事务都加 X锁，不过我们大部分事务都没必要，所以造成了性能浪费</p>
+<p>在此级别下，我们便不需要对 SELECT 操作显式加锁，InnoDB会自动加锁，事务安全，但性能很低</p>
+<h3 id="关于MySQL隔离级别为什么是RR"><a href="#关于MySQL隔离级别为什么是RR" class="headerlink" title="关于MySQL隔离级别为什么是RR"></a>关于MySQL隔离级别为什么是RR</h3><p>众所周知，常见的关系型数据库的默认事务隔离级别采用的是READ_COMMITED，例如PostgreSQL、ORACLE、SQL Server和DB2。但是使用InnoDB引擎的MySQL数据库默认事务隔离级别是REPEATABLE_READ。</p>
+<p>那为什么MySQL要独树一帜的选用RR的隔离级别呢？</p>
+<p>其实这是一个历史遗留问题。</p>
+<p>我们都知道，MySQL的主从复制是基于binlog复制的，在MySQL 5.7.7之前，默认的格式是 <code>STATEMENT</code>，在 MySQL 5.7.7 及更高版本中，默认值是 <code>ROW</code>。日志格式通过 <code>binlog-format</code> 指定。</p>
+<p>binlog目前有三种格式：statement、row、mixed：</p>
+<ul>
+<li><p>statement:记录的是修改SQL语句</p>
+</li>
+<li><p>row：记录的是每行实际数据的变更</p>
+</li>
+<li><p>mixed：statement和row模式的混合</p>
+</li>
+</ul>
+<p>MySQL5.0以前只有statement格式，而这种格式在读已提交(Read Commited)这个隔离级别下主从复制是有bug的，因此Mysql将可重复读(Repeatable Read)作为默认的隔离级别。<br>接下来，就要说说当binlog为STATEMENT格式，且隔离级别为读已提交(Read Commited)时，有什么bug呢？如下图所示，在主(master)上执行如下事务:<br>  <img src="https://gitee.com/gzj1999/blogImg/raw/master/img/c0243ecb466b6f3c7c30c26bb26c757d.png" alt="在这里插入图片描述" loading="lazy"><br> 此时在主库中查询：</p>
+<pre class="language-none"><code class="language-none">select * from t;
+1</code></pre>
+<p>输出结果：</p>
+<pre class="language-none"><code class="language-none">+---+---+
+| c1 |c2
++---+---+
+| 2 | 2
++---+---+
+1 row in set</code></pre>
+<p>从库中查询：</p>
+<pre class="language-none"><code class="language-none">select * from t;
+1</code></pre>
+<p>输出结果：</p>
+<pre class="language-none"><code class="language-none">Empty set
+1</code></pre>
+<p>这里出现了主从不一致性的问题！原因其实很简单，就是在master上执行的顺序为先删后插！而此时binlog为STATEMENT格式，它记录的顺序为先插后删！从(slave)同步的是binglog，因此从机执行的顺序和主机不一致！就会出现主从不一致！<br>如何解决？<br>解决方案有两种！<br>(1)隔离级别设为可重复读(Repeatable Read),在该隔离级别下引入间隙锁。当Session 1执行delete语句时，会锁住间隙。那么，Ssession 2执行插入语句就会阻塞住！<br>(2)将binglog的格式修改为row格式，此时是基于行的复制，自然就不会出现sql执行顺序不一样的问题！奈何这个格式在mysql5.1版本开始才引入。<br><strong>因此由于历史原因，mysql将默认的隔离级别设为可重复读(Repeatable Read)，保证主从复制不出问题！</strong></p>
+<p>当前这个历史遗漏问题以及解决，大家可以将其设置为RC+ROW组合的方式（例如ORACLE等数据库隔离级别就是RC），而不是必须使用RR（会带来更多的锁等待），具体可以视情况选择。</p>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>gzj</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://zzugzj.github.io/posts/9617db49/" title="MySQL幻读和可重复读">https://zzugzj.github.io/posts/9617db49/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"></div><div class="post-nav-item"><a class="post-nav-next" href="/posts/30888651/" rel="next" title="Java8实战笔记"><span class="post-nav-text">Java8实战笔记</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>点击按钮跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/zzugzj/zzugzj.github.io/issues?q=is:issue+MySQL幻读和可重复读">GitHub Issues</a></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2020 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> gzj</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.3.0</span></div><div class="live_time"><span>本博客已运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-12-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
+}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div><div class="aplayer no-destroy" id="aplayer" data-id="7840106285" data-server="tencent" data-type="playlist" data-fixed="true" data-theme="#0078E7" data-loop="all" data-order="list" data-preload="auto" data-volume="0.7" data-mutex data-lrctype="0" data-listmaxheight="340px" data-storagename="metingjs"></div></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>
