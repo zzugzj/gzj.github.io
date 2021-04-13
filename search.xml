@@ -4,7 +4,7 @@
   
     
     <entry>
-      <title>MySQL幻读和可重复读</title>
+      <title>InnoDB的锁和事务模型</title>
       <link href="posts/9617db49/"/>
       <url>posts/9617db49/</url>
       
