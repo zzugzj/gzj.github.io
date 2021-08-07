@@ -18,7 +18,7 @@
 <meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/9269551b14c51dc9605f43d441c5a92a.png">
 <meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/1e647269a5f51497bd5488b2a44444b4.png">
 <meta property="article:published_time" content="2021-08-07T03:49:34.244Z">
-<meta property="article:modified_time" content="2021-08-07T12:29:34.582Z">
+<meta property="article:modified_time" content="2021-08-07T12:35:50.698Z">
 <meta property="article:author" content="gzj">
 <meta property="article:tag" content="reactor">
 <meta name="twitter:card" content="summary">
@@ -40,19 +40,19 @@
 <li>send：最后，通过套接字把结果发送出去。</li>
 </ul>
 <h3 id="single-reactor-thread"><a href="#single-reactor-thread" class="headerlink" title="single reactor thread"></a>single reactor thread</h3><p>这里有一张图，解释了这一讲的设计模式。一个 reactor 线程上同时负责分发 acceptor 的事件、已连接套接字的 I/O 事件。</p>
-<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/b8627a1a1d32da4b55ac74d4f0230f33.png" alt="img" style="zoom:67%;" / loading="lazy">
+<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/b8627a1a1d32da4b55ac74d4f0230f33.png" alt="img" style="zoom: 80%;" / loading="lazy">
 
 <h3 id="single-reactor-thread-worker-threads"><a href="#single-reactor-thread-worker-threads" class="headerlink" title="single reactor thread + worker threads"></a>single reactor thread + worker threads</h3><p>上述的设计模式有一个问题，和 I/O 事件处理相比，应用程序的业务逻辑处理是比较耗时的，这些工作相对而言比较独立，它们会拖慢整个反应堆模式的执行效率。</p>
 <p>将这些 decode、compute、encode 型工作放置到另外的线程池中，和反应堆线程解耦。反应堆线程只负责处理 I/O 相关的工作，业务逻辑放到线程池里由空闲的线程来执行。当结果完成后，再交给反应堆线程，由反应堆线程通过套接字将结果发送出去。</p>
-<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/7e4505bb75fef4a4bb945e6dc3040823.png" alt="img" style="zoom:67%;" / loading="lazy">
+<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/7e4505bb75fef4a4bb945e6dc3040823.png" alt="img" style="zoom: 80%;" / loading="lazy">
 
 <p>reactor模式虽然可以同时分发Acceptor上的连接建立事件和已建立连接的 I/O 事件，但如果客户端比较多的情况下，单 reactor 线程既分发连接建立，又分发已建立连接的 I/O，有点忙不过来，导致客户端连接成功率偏低。</p>
 <h3 id="主-从-reactor-模式"><a href="#主-从-reactor-模式" class="headerlink" title="主 - 从 reactor 模式"></a>主 - 从 reactor 模式</h3><p>主 - 从这个模式的核心思想是，主反应堆线程只负责分发 Acceptor 连接建立，已连接套接字上的 I/O 事件交给 sub-reactor 负责分发。其中 sub-reactor 的数量，可以根据 CPU 的核数来灵活设置。而且，同一个套接字事件分发只会出现在一个反应堆线程中，这会大大减少并发处理的锁开销。</p>
-<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/9269551b14c51dc9605f43d441c5a92a.png" alt="img" style="zoom:50%;" / loading="lazy">
+<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/9269551b14c51dc9605f43d441c5a92a.png" alt="img" style="zoom: 80%;" / loading="lazy">
 
 <p>我们的主反应堆线程一直在感知连接建立的事件，如果有连接成功建立，主反应堆线程通过 accept 方法获取已连接套接字，接下来会按照一定的算法选取一个从反应堆线程，并把已连接套接字加入到选择好的从反应堆线程中。</p>
 <h3 id="主-从-reactor-worker-threads-模式"><a href="#主-从-reactor-worker-threads-模式" class="headerlink" title="主 - 从 reactor+worker threads 模式"></a>主 - 从 reactor+worker threads 模式</h3><p>如果说主 - 从 reactor 模式解决了 I/O 分发的高效率问题，那么 work threads 就解决了业务逻辑和 I/O 分发之间的耦合问题。把这两个策略组装在一起，就是实战中普遍采用的模式。</p>
-<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/1e647269a5f51497bd5488b2a44444b4.png" alt="img" style="zoom:15%;" / loading="lazy">
+<img src="https://gitee.com/gzj1999/blogImg/raw/master/img/1e647269a5f51497bd5488b2a44444b4.png" alt="img" style="zoom: 80%;" / loading="lazy">
 
 
 
