@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="theme-color" content="#0078E7"><meta name="author" content="gzj"><meta name="copyright" content="gzj"><meta name="generator" content="Hexo 5.3.0"><meta name="theme" content="hexo-theme-yun"><title>分布式系统的挑战 | gzj-blogs</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@900&amp;display=swap" media="print" onload="this.media='all'"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/star-markdown-css@0.1.22/dist/yun/yun-markdown.min.css"><script src="//at.alicdn.com/t/font_1140697_ed8vp4atwoj.js" async></script><script src="https://cdn.jsdelivr.net/npm/scrollreveal/dist/scrollreveal.min.js" defer></script><script>document.addEventListener("DOMContentLoaded", () => {
+  [".post-card",".post-content img"].forEach((target)=> {
+    ScrollReveal().reveal(target);
+  })
+});
+</script><link class="aplayer-style-marker" rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.css"><script class="aplayer-script-marker" src="https://cdn.jsdelivr.net/npm/aplayer@latest/dist/APlayer.min.js" defer></script><script class="meting-script-marker" src="https://cdn.jsdelivr.net/npm/meting@1/dist/Meting.min.js" defer></script><script src="https://cdn.jsdelivr.net/npm/pjax@latest/pjax.min.js" defer></script><script src="/jsax.js" defer></script><script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script><link id="light-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism.css" media="(prefers-color-scheme: light)"><link id="dark-prism-css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.20.0/themes/prism-tomorrow.css" media="(prefers-color-scheme: dark)"><link rel="shortcut icon" type="image/svg+xml" href="/yun.svg"><link rel="mask-icon" href="/yun.svg" color="#0078E7"><link rel="alternate icon" href="/yun.ico"><link rel="preload" href="/css/hexo-theme-yun.css" as="style"><link rel="preload" href="/js/utils.js" as="script"><link rel="preload" href="/js/hexo-theme-yun.js" as="script"><link rel="prefetch" href="/js/sidebar.js" as="script"><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="/css/hexo-theme-yun.css"><link rel="alternate" href="/atom.xml" title="gzj-blogs" type="application/atom+xml"><script id="yun-config">
+    const Yun = window.Yun || {};
+    window.CONFIG = {"hostname":"zzugzj.github.io","root":"/","title":"勿在浮沙筑高台","version":"1.3.0","mode":"auto","copycode":true,"anonymous_image":"https://cdn.jsdelivr.net/gh/YunYouJun/cdn/img/avatar/none.jpg","say":{"api":"https://v1.hitokoto.cn","hitokoto":true},"local_search":{"path":"/search.xml"},"fireworks":{"colors":["102, 167, 221","62, 131, 225","33, 78, 194"]}};
+  </script><meta name="description" content="使用分布式系统与在一台计算机上编写软件有着根本的区别，主要的区别在于，有许多新颖和刺激的方法可以使事情出错。在这一章中，我们将了解实践中出现的问题，理解我们能够依赖，和不可以依赖的东西。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="分布式系统的挑战">
+<meta property="og:url" content="https://zzugzj.github.io/posts/165ca954/index.html">
+<meta property="og:site_name" content="gzj-blogs">
+<meta property="og:description" content="使用分布式系统与在一台计算机上编写软件有着根本的区别，主要的区别在于，有许多新颖和刺激的方法可以使事情出错。在这一章中，我们将了解实践中出现的问题，理解我们能够依赖，和不可以依赖的东西。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-2.png">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-3.png">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-4.png">
+<meta property="og:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-5.png">
+<meta property="article:published_time" content="2021-08-17T13:53:37.951Z">
+<meta property="article:modified_time" content="2021-08-25T14:47:56.314Z">
+<meta property="article:author" content="gzj">
+<meta property="article:tag" content="分布式">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-2.png"><script src="/js/ui/mode.js"></script></head><body><script defer src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script><script defer src="/js/ui/fireworks.js"></script><canvas class="fireworks"></canvas><div class="container"><a class="sidebar-toggle hty-icon-button" id="menu-btn"><div class="hamburger hamburger--spin" type="button"><span class="hamburger-box"><span class="hamburger-inner"></span></span></div></a><div class="sidebar-toggle sidebar-overlay"></div><aside class="sidebar"><script src="/js/sidebar.js"></script><ul class="sidebar-nav"><li class="sidebar-nav-item sidebar-nav-toc hty-icon-button sidebar-nav-active" data-target="post-toc-wrap" title="文章目录"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-list-ordered"></use></svg></li><li class="sidebar-nav-item sidebar-nav-overview hty-icon-button" data-target="site-overview-wrap" title="站点概览"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-passport-line"></use></svg></li></ul><div class="sidebar-panel" id="site-overview-wrap"><div class="site-info fix-top"><a class="site-author-avatar" href="/about/" title="gzj"><img width="96" loading="lazy" src="/images/avatar.jpg" alt="gzj"><span class="site-author-status" title="不想上班">😭</span></a><div class="site-author-name"><a href="/about/">gzj</a></div><a class="site-name" href="/about/site.html">gzj-blogs</a><sub class="site-subtitle"></sub><div class="site-desciption"></div></div><nav class="site-state"><a class="site-state-item hty-icon-button icon-home" href="/" title="首页"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-home-4-line"></use></svg></span></a><div class="site-state-item"><a href="/archives/" title="归档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-archive-line"></use></svg></span><span class="site-state-item-count">31</span></a></div><div class="site-state-item"><a href="/categories/" title="分类"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-2-line"></use></svg></span><span class="site-state-item-count">8</span></a></div><div class="site-state-item"><a href="/tags/" title="标签"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="site-state-item-count">12</span></a></div><a class="site-state-item hty-icon-button" href="/about" title="文档"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-settings-line"></use></svg></span></a></nav><hr style="margin-bottom:0.5rem"><div class="links-of-author"><a class="links-of-author-item hty-icon-button" rel="noopener" href="/atom.xml" title="RSS" target="_blank" style="color:orange"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-rss-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://github.com/zzugzj" title="GitHub" target="_blank" style="color:#6e5494"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-github-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="https://music.163.com/#/user/home?id=1317412612" title="网易云音乐" target="_blank" style="color:#C20C0C"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-netease-cloud-music-line"></use></svg></a><a class="links-of-author-item hty-icon-button" rel="noopener" href="mailto:1045643052@qq.com" title="E-Mail" target="_blank" style="color:#8E71C1"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-mail-line"></use></svg></a></div><br><a class="links-item hty-icon-button" id="toggle-mode-btn" href="javascript:;" title="Mode" style="color: #f1cb64"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-contrast-2-line"></use></svg></a></div><div class="sidebar-panel sidebar-panel-active" id="post-toc-wrap"><div class="post-toc"><div class="post-toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%95%85%E9%9A%9C%E4%B8%8E%E9%83%A8%E5%88%86%E5%A4%B1%E6%95%88"><span class="toc-number">1.</span> <span class="toc-text">故障与部分失效</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E5%8F%AF%E9%9D%A0%E7%9A%84%E7%BD%91%E7%BB%9C"><span class="toc-number">1.1.</span> <span class="toc-text">不可靠的网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%A3%80%E6%B5%8B%E6%95%85%E9%9A%9C"><span class="toc-number">1.2.</span> <span class="toc-text">检测故障</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%B6%85%E6%97%B6%E4%B8%8E%E6%97%A0%E6%9C%9F%E9%99%90%E7%9A%84%E5%BB%B6%E8%BF%9F"><span class="toc-number">1.3.</span> <span class="toc-text">超时与无期限的延迟</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%BD%91%E7%BB%9C%E6%8B%A5%E5%A1%9E%E5%92%8C%E6%8E%92%E9%98%9F"><span class="toc-number">1.3.1.</span> <span class="toc-text">网络拥塞和排队</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%90%8C%E6%AD%A5%E4%B8%8E%E5%BC%82%E6%AD%A5%E7%BD%91%E7%BB%9C"><span class="toc-number">1.4.</span> <span class="toc-text">同步与异步网络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%8D%E5%8F%AF%E9%9D%A0%E7%9A%84%E6%97%B6%E9%92%9F"><span class="toc-number">1.5.</span> <span class="toc-text">不可靠的时钟</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%8D%95%E8%B0%83%E6%97%B6%E9%92%9F%E4%B8%8E%E5%A2%99%E4%B8%8A%E6%97%B6%E9%92%9F"><span class="toc-number">1.6.</span> <span class="toc-text">单调时钟与墙上时钟</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%A2%99%E4%B8%8A%E6%97%B6%E9%92%9F"><span class="toc-number">1.6.1.</span> <span class="toc-text">墙上时钟</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%8D%95%E8%B0%83%E6%97%B6%E9%92%9F"><span class="toc-number">1.6.2.</span> <span class="toc-text">单调时钟</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%97%B6%E9%92%9F%E5%90%8C%E6%AD%A5%E4%B8%8E%E5%87%86%E7%A1%AE%E6%80%A7"><span class="toc-number">1.7.</span> <span class="toc-text">时钟同步与准确性</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%BE%9D%E8%B5%96%E5%90%8C%E6%AD%A5%E7%9A%84%E6%97%B6%E9%92%9F"><span class="toc-number">1.8.</span> <span class="toc-text">依赖同步的时钟</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%97%B6%E9%97%B4%E6%88%B3%E4%B8%8E%E4%BA%8B%E4%BB%B6%E9%A1%BA%E5%BA%8F"><span class="toc-number">1.8.1.</span> <span class="toc-text">时间戳与事件顺序</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E6%97%B6%E9%92%9F%E7%9A%84%E7%BD%AE%E4%BF%A1%E5%8C%BA%E9%97%B4"><span class="toc-number">1.8.2.</span> <span class="toc-text">时钟的置信区间</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%85%A8%E5%B1%80%E5%BF%AB%E7%85%A7%E7%9A%84%E5%90%8C%E6%AD%A5%E6%97%B6%E9%92%9F"><span class="toc-number">1.8.3.</span> <span class="toc-text">全局快照的同步时钟</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%BF%9B%E7%A8%8B%E6%9A%82%E5%81%9C"><span class="toc-number">1.9.</span> <span class="toc-text">进程暂停</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E4%BF%9D%E8%AF%81"><span class="toc-number">1.9.1.</span> <span class="toc-text">响应时间保证</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E8%B0%83%E6%95%B4%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="toc-number">1.9.2.</span> <span class="toc-text">调整垃圾回收的影响</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%9F%A5%E8%AF%86%E3%80%81%E7%9C%9F%E7%9B%B8%E4%B8%8E%E8%B0%8E%E8%A8%80"><span class="toc-number">2.</span> <span class="toc-text">知识、真相与谎言</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%9C%9F%E7%9B%B8%E7%94%B1%E5%A4%9A%E6%95%B0%E5%86%B3%E5%AE%9A"><span class="toc-number">2.1.</span> <span class="toc-text">真相由多数决定</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E4%B8%BB%E8%8A%82%E7%82%B9%E4%B8%8E%E9%94%81"><span class="toc-number">2.1.1.</span> <span class="toc-text">主节点与锁</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#fencing%E4%BB%A4%E7%89%8C"><span class="toc-number">2.1.2.</span> <span class="toc-text">fencing令牌</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%8B%9C%E5%8D%A0%E5%BA%AD%E6%95%85%E9%9A%9C"><span class="toc-number">2.2.</span> <span class="toc-text">拜占庭故障</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%B1%E7%9A%84%E8%B0%8E%E8%A8%80%E5%BD%A2%E5%BC%8F"><span class="toc-number">2.2.1.</span> <span class="toc-text">弱的谎言形式</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E7%90%86%E8%AE%BA%E7%B3%BB%E7%BB%9F%E6%A8%A1%E5%9E%8B%E4%B8%8E%E7%8E%B0%E5%AE%9E"><span class="toc-number">2.3.</span> <span class="toc-text">理论系统模型与现实</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E7%AE%97%E6%B3%95%E7%9A%84%E6%AD%A3%E7%A1%AE%E6%80%A7"><span class="toc-number">2.3.1.</span> <span class="toc-text">算法的正确性</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%AE%89%E5%85%A8%E6%80%A7%E5%92%8C%E6%B4%BB%E6%80%A7"><span class="toc-number">2.3.2.</span> <span class="toc-text">安全性和活性</span></a></li></ol></li></ol></li></ol></div></div></div></aside><main class="sidebar-translate" id="content"><div id="post"><article class="post-block" itemscope itemtype="https://schema.org/Article"><link itemprop="mainEntityOfPage" href="https://zzugzj.github.io/posts/165ca954/"><span hidden itemprop="author" itemscope itemtype="https://schema.org/Person"><meta itemprop="name" content="gzj"><meta itemprop="description"></span><span hidden itemprop="publisher" itemscope itemtype="https://schema.org/Organization"><meta itemprop="name" content="gzj-blogs"></span><header class="post-header"><h1 class="post-title" itemprop="name headline">分布式系统的挑战</h1><div class="post-meta"><div class="post-time" style="display:block"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-line"></use></svg></span> <span class="post-meta-icon-text">发表于</span> <time title="创建时间：2021-08-17 21:53:37" itemprop="dateCreated datePublished" datetime="2021-08-17T21:53:37+08:00">2021-08-17</time><span class="post-meta-divider">-</span><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-calendar-2-line"></use></svg></span> <span class="post-meta-icon-text">更新于</span> <time title="修改时间：2021-08-25 22:47:56" itemprop="dateModified" datetime="2021-08-25T22:47:56+08:00">2021-08-25</time></div><span class="post-count"><span class="post-symbolcount"><span class="post-meta-item-icon" title="本文字数"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-file-word-line"></use></svg></span> <span title="本文字数">6.3k</span><span class="post-meta-divider">-</span><span class="post-meta-item-icon" title="阅读时长"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-timer-line"></use></svg></span> <span title="阅读时长">21m</span></span></span><div class="post-classify"><span class="post-category"> <span class="post-meta-item-icon" style="margin-right:3px;"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-folder-line"></use></svg></span><span itemprop="about" itemscope itemtype="https://schema.org/Thing"><a class="category" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/" style="--text-color:var(--hty-text-color)" itemprop="url" rel="index"><span itemprop="text">分布式</span></a></span></span><span class="post-tag"><span class="post-meta-divider">-</span><a class="tag" href="/tags/%E5%88%86%E5%B8%83%E5%BC%8F/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">分布式</span></a><a class="tag" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" style="--text-color:var(--hty-text-color)"><span class="post-meta-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-price-tag-3-line"></use></svg></span><span class="tag-name">数据库</span></a></span></div></div></header><section class="post-body" itemprop="articleBody"><div class="post-content markdown-body" style="--smc-primary:#0078E7;"><p>这是对分布式系统中的一个全面的、近乎悲观的总结。故障可能来源于网络问题，时钟与时序问题。</p>
+<h2 id="故障与部分失效"><a href="#故障与部分失效" class="headerlink" title="故障与部分失效"></a>故障与部分失效</h2><p>我们期望的情况是要不功能正常，要不完全失效，不会介于这两者之间。因此我们宁可让计算机崩溃，也不能返回一个错误的结果。</p>
+<p>但这种情况在涉及多个节点时，理想化的标准正确模型就很难再适用。可能系统的一部分正常工作，一部分出现难以预料的故障，称之为部分失效。</p>
+<h3 id="不可靠的网络"><a href="#不可靠的网络" class="headerlink" title="不可靠的网络"></a>不可靠的网络</h3><p>互联网以及大多数数据中心的内部网络（通常是以太网）都是异步网络。一个节点发消息到另一个节点，但网络不能保证它什么时候到达。而且在这个过程中，很多事情可能出错：</p>
+<ol>
+<li>请求可能已经丢失（可能有人拔掉了网线）。</li>
+<li>请求可能正在排队，稍后将交付（也许网络或接收方超载）。</li>
+<li>远程节点可能已经失效（可能是崩溃或关机）。</li>
+<li>远程节点可能暂时停止了响应（可能会遇到长时间的垃圾回收暂停）。</li>
+<li>远程节点可能已经处理了请求，但是网络上的响应已经丢失（可能是网络交换机配置错误）。</li>
+<li>远程节点可能已经处理了请求，但是响应已经被延迟，并且稍后将被传递（可能是网络或者发送方过载）。</li>
+</ol>
+<p>处理这个问题通常是超时机制：等待一段时间后，如果仍然没有收到恢复则选择放弃，并且认为响应不会到达。但即使判定超时，仍然不知道远程节点是否收到了请求。</p>
+<h3 id="检测故障"><a href="#检测故障" class="headerlink" title="检测故障"></a>检测故障</h3><p>许多系统需要自动检测故障节点。例如：</p>
+<ul>
+<li>负载均衡器需要停止向已死亡的节点转发请求（即下线处理）。</li>
+<li>在单主复制功能的分布式数据库中，如果主库失效，则需要将从库之一升级为新主库，但是由于网络的不确定性很难准确判断节点是否确实失效。</li>
+</ul>
+<ul>
+<li>节点在处理请求时崩溃，很难直到处理了多少数据。</li>
+<li>如果服务进程崩溃，但操作系统正常，可以通过脚本通知其他节点。以便新节点快速接管而跳过等待超时。HBase采用这个。</li>
+</ul>
+<p>相反，如果出了什么问题，你可能会在堆栈的某个层次上得到一个错误响应，但总的来说，你必须假设你根本就没有得到任何回应。您可以重试几次（TCP重试是透明的，但是您也可以在应用程序级别重试），等待超时过期，并且如果在超时时间内没有收到响应，则最终声明节点已经死亡。</p>
+<h3 id="超时与无期限的延迟"><a href="#超时与无期限的延迟" class="headerlink" title="超时与无期限的延迟"></a>超时与无期限的延迟</h3><p>超时时间的设置很难，时间长的超时值意味着更长时间的等待，在此期间用户会收到异常信息。较短的超时时间可能会出现误判，比如出现网络波动。</p>
+<p>如果节点实际上活着，过早声明为失效，新节点尝试接管，则可能操作在两个节点执行两次。</p>
+<p>节点被宣告失效，承担的责任会移交给其他节点，如果系统已经处于高负荷状态，节点因为负载过高而出现响应缓慢，转移负载到其他节点可能会导致失效扩散。</p>
+<p>如果一个网络延迟控制在时间d内，要不完成交付，要不丢失，非故障节点在时间r内完成处理，那么成功请求在2d+r内收到响应，那么2d+r是一个理想的超时设置。</p>
+<p>但绝大多数系统没有类似的保证：异步网络理论上延迟无限大，多数服务端无法保证给定的某个时间内一定完成处理请求。</p>
+<h4 id="网络拥塞和排队"><a href="#网络拥塞和排队" class="headerlink" title="网络拥塞和排队"></a>网络拥塞和排队</h4><ul>
+<li>当多个不同节点同时发送数据包到相同节点时，网络交换机会排队，依次发送数据库包到目标网络。如果网络负担重，可能需要等一会，如果交换机队列塞满，则数据包可能被丢弃，引发大量重传。</li>
+<li>数据包到达目标机器后，如果cpu繁忙，请求被操作系统排队，直到程序处理。</li>
+<li>虚拟化环境中，cpu会切换虚拟机，导致操作系统会突然暂停几十毫秒。这段时间，客户虚拟机无法从网络接受任何数据。</li>
+<li>TCP执行流量控制时，节点会主动限制自己的发送速率以避免加大网络负载。意味着在发送方排队。</li>
+</ul>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-2.png" loading="lazy"></p>
+<p>以上因素会导致网络延迟的变化。当系统有足够处理能力，排队会被处理，但接近系统最大涉及上限时，排队对延迟的影响就变得明显。</p>
+<p>更好的办法是，超时设置并不是一个不变的常量，而是持续测量响应时间及其变化，然后根据最新的响应时间分布来自动调整。这可以通过Phi Accrual故障检测器来完成，该检测器在例如Akka和Cassandra中使用。 TCP超时重传机制也同样起作用。</p>
+<h3 id="同步与异步网络"><a href="#同步与异步网络" class="headerlink" title="同步与异步网络"></a>同步与异步网络</h3><p>传统的固话网络是同步的，语音延迟和掉话现象极为罕见。在电话拨通时，系统会动态的建立一条电路：在整个线路上为呼叫分配一个固定的，带宽有保证的通信链路，一直到通信结束。即使数据中间经过多个路由器，16bit空间在电路建立时已经在网络中保留，不会受到排队影响。没有排队，端到端延迟是固定的，称为有界延迟。</p>
+<h3 id="不可靠的时钟"><a href="#不可靠的时钟" class="headerlink" title="不可靠的时钟"></a>不可靠的时钟</h3><p>网络上的每台机器都有自己的时钟硬件设备，通常是石英晶体震荡器。这些设备不是绝对精确的，每台机器都维护自己本地的时间副本，可能比其他机器稍快或更慢。可以在一定程度上同步时钟：最常用的机制是<strong>网络时间协议（NTP）</strong>，它可以根据一组专门的时间服务器来调整本地时间。时间服务器则从精确度更高的时间源（如GPS接收机）获取高精度时间。</p>
+<h3 id="单调时钟与墙上时钟"><a href="#单调时钟与墙上时钟" class="headerlink" title="单调时钟与墙上时钟"></a>单调时钟与墙上时钟</h3><p>现代计算机内部至少有两种不同的时钟：一个是墙上时钟（钟表时间），一个是单调时钟。</p>
+<h4 id="墙上时钟"><a href="#墙上时钟" class="headerlink" title="墙上时钟"></a>墙上时钟</h4><p>根据某个日历来返回当前的日期与时间。比如Linux的<code>clock_gettime(CLOCK_REALTIME)</code>和Java中的<code>System.currentTimeMillis()</code>返回自epoch以来的秒数（或毫秒），根据公历日历，不包括闰秒。有些系统使用其他日期作为参考点。</p>
+<p>墙上时钟可以与NTP同步。</p>
+<h4 id="单调时钟"><a href="#单调时钟" class="headerlink" title="单调时钟"></a>单调时钟</h4><p>单调时钟更适合测量时间间隔。Linux上的<code>clock_gettime(CLOCK_MONOTONIC)</code>，和Java中的<code>System.nanoTime()</code>都是单调时钟。单调时钟能保证他们总是向前。</p>
+<p>单调时钟的绝对值没有任何意义，它可能是电脑启动以后经历的纳秒数或其他含义。比较不同节点的单调时钟值没有任何意义。</p>
+<p>如果有多个cpu，每个cpu可能有单独的计时器，不与其他cpu同步。应用程序的线程可能在不同cpu上，操作系统会补偿多个计时器的偏差，从而为应用层提供统一的单调递增计时。</p>
+<p>在分布式系统中，可以采用单调时钟测量一段任务的持续时间，它不假定节点间有任何的时钟同步，且可以容忍轻微的测量误差。</p>
+<h3 id="时钟同步与准确性"><a href="#时钟同步与准确性" class="headerlink" title="时钟同步与准确性"></a>时钟同步与准确性</h3><p>单调时钟不需要同步，墙上时钟需要根据NTP服务器或其他时间源来同步。</p>
+<p>但计算机的石英钟不够精确，存在漂移现象。时钟漂移主要取决于机器的温度。如果时钟与NTP服务器差别太大，可能出现拒绝同步，或本地时钟将被强制同步。同步过程也会受网络影响。</p>
+<p>另外闰秒也会产生一分钟为59秒或61秒的现象，这会使一些对闰秒无防范的系统出现混乱。处理闰秒的推荐方案是在NTP服务器汇报时间时故意做些调整，目的是在一天的周期内逐步调整闰秒。</p>
+<p>虚拟机中，当虚拟机共享一个cpu内核时，每个虚拟机会出现数十毫秒的暂停以切换虚拟机。应用角度看就会时钟向前发生了跳跃。</p>
+<p>有的场景需要高精度的时钟，比如金融操作，需要在100微秒内同步时钟。采用GPS接收机，精确时间协议（PTP）。</p>
+<h3 id="依赖同步的时钟"><a href="#依赖同步的时钟" class="headerlink" title="依赖同步的时钟"></a>依赖同步的时钟</h3><p>时钟问题是不容易及时发现的，如果需要精确同步的时钟，最好仔细监控所有节点的时钟偏差。如果某个节点的时钟漂移超出上限，应将其宣告为失败，从集群移除。这样确保在造成重大影响前尽早发现并处理问题。</p>
+<h4 id="时间戳与事件顺序"><a href="#时间戳与事件顺序" class="headerlink" title="时间戳与事件顺序"></a>时间戳与事件顺序</h4><p>在多个节点对事件进行排序，如果它依赖时钟，就有一定的技术风险。</p>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-3.png" loading="lazy"></p>
+<p>上图是在一个多领导者复制的数据库中，客户A写到节点1，节点1异步复制到2和3，客户B进行同样的操作，给x加一，但节点2收到两个事件时，会根据时间戳错误判断x=1是新的值，然后导致客户B的增量操作丢失。</p>
+<p>这种冲突解决测量叫最后写入获胜（LWW），在多主和无主节点复制中广泛使用。LWW的根本问题是：</p>
+<ul>
+<li>数据库写入可能会神秘地消失：后续发生的写操作没法覆盖一个较早的值，因为后者节点时钟太快了，导致一些数据丢弃并且没有报告任何错误。</li>
+<li>LWW无法区分<strong>高频顺序写入</strong>和<strong>真正并发写入</strong>（写操作不依赖其他写）。需要额外的因果关系跟踪机制（例如版本向量），以防止因果关系的冲突。</li>
+<li>由于时钟精度的限制（比如毫秒级），两个节点可能独立产生了相同时间戳。为了解决这样的冲突，需要一个额外的仲裁值（可能是大的随机数），但无法区分因果关系。</li>
+</ul>
+<p>这种错误的顺序问题很难避免，除了石英漂移等误差来源，NTP同步精度也收到网络影响。</p>
+<h4 id="时钟的置信区间"><a href="#时钟的置信区间" class="headerlink" title="时钟的置信区间"></a>时钟的置信区间</h4><p>墙上时钟或许会返回微秒甚至纳秒的信息，但这种精度的测量值是不可信的。因为随便一个误差就会高达几毫米甚至几十毫秒。</p>
+<p>因此，我们将时钟读数视为一个带有置信区间的时间范围。比如系统有95%的置信度任务事件介于10.3-10.5之间，那么时间戳中那些微秒级的读数毫无意义。</p>
+<p>但大多数系统不提供这种误差查询接口。当调用<code>clock_gettime()</code>的时候，返回值没有误差信息，不知道置信区间。</p>
+<p>但谷歌的Spanner中的TrueTime API可以明确报告本地时钟的置信区间。查询时间时会返回两个值，【不早于，不晚于】。时间间隔范围主要取决于本地石英钟最后于高精时钟源同步后所经历的时间长短。</p>
+<h4 id="全局快照的同步时钟"><a href="#全局快照的同步时钟" class="headerlink" title="全局快照的同步时钟"></a>全局快照的同步时钟</h4><p>快照隔离需要单调递增的事务ID，如果数据库分布在多台机器上，就需要一个全局单调递增的事务ID。事务ID要求必须反映因果关系：事务B如果要读取事务A写入的值，则B的事务ID必须大于A的事务ID，否则快照将不一致。如果有很多的小数据包，则分布式系统中创建事务ID会引入瓶颈。</p>
+<p>如果能将墙上时钟进行同步，则用时间戳来衡量事务ID更方便。Google Spanner的True Time API，如果有两个置信区间，$A = [A_{earliest}, A_{latest}]$， $B=[B_{earliest}, B_{latest}]$， 这两个区间如果不重叠（即：$A_{earliest} &lt; A_{latest} &lt; B_{earliest} &lt; B_{latest}$），则B一定在A之后。为此，Google在每个数据中心部署了一个GPS接收器或原子钟，保证所有时间同步在约7ms内完成。</p>
+<p>借助时钟同步来处理分布式事务语义处理Google意外，主流数据库还没有更多实现，但整个领域很活跃和有趣。</p>
+<h3 id="进程暂停"><a href="#进程暂停" class="headerlink" title="进程暂停"></a>进程暂停</h3><p>关于主从复制中如何判断主节点存活，有这样一种思路：主节点从其他节点获取一个租约（类似带时间的锁），只有一个节点能获取租约，某节点获取租约后，要在超时前定期去续约。如果节点发生故障，则续约失败，其他节点接管。</p>
+<p>这种方案，依赖同步的时钟，租约到期时间是另一个节点设置，但和本地时钟进行比较。如果时钟有几秒的差异，可能就会出现问题。</p>
+<p>通常判断是否过期与请求处理间隔很短，但如果进程执行出现意外的暂停，那就会出问题。导致进程暂停的原因有很多：</p>
+<ul>
+<li>GC暂停，即使所谓的并发垃圾收集器也不能完全与应用代码并行运行。</li>
+<li>虚拟化环境，可能暂停虚拟机（比如将内存状态保存到磁盘）然后继续。通常用于实时迁移，把虚拟机迁移到另一个主机但不用重启。</li>
+<li>运行在终端设备（笔记本），可能由于用户关机或休眠而暂停。</li>
+<li>执行线程上下文切换或在虚拟化环境进行虚拟机切换，如果负载很高，可能需要暂停一段时间。</li>
+<li>同步磁盘IO</li>
+<li>操作系统触发缺页中断，内存压力很大时，可能花大量时间在内存换入换出上（称为抖动）。通常在服务器禁止页面调度，宁愿干掉一个进程来释放内存，也不愿意冒抖动风险。</li>
+<li>可以通过发送SIGSTOP信号来暂停Unix进程，例如通过在shell中按下Ctrl-Z。 这个信号立即阻止进程继续执行更多的CPU周期，直到SIGCONT恢复为止，此时它将继续运行。 即使你的环境通常不使用SIGSTOP，也可能由运维工程师意外发送。</li>
+</ul>
+<p>这些情况都可能抢占一个正在运行的线程，而且线程一无所知。分布式系统任何节点必须假定，执行中可能会暂停一段时间，暂停时集群其他部分照常运行。最终，暂停的节点可能会回来继续运行，除非再次检查时钟，否则它对刚刚的暂停毫无知觉。</p>
+<h4 id="响应时间保证"><a href="#响应时间保证" class="headerlink" title="响应时间保证"></a>响应时间保证</h4><p>线程和进程虽然可能会暂停相当长的时间，但如果对系统进行一些配置，这些原因是可以消除的。</p>
+<p>有些软件如果在指定时间内无法响应会造成相当严重后果，比如飞机上对输入传感器快速做出响应的组件等。对这种系统，软件必须有一个做出响应的上限，如果不满足，就会有系统级的故障。这就是所谓的<strong>硬实时（hard real-time）</strong>系统。</p>
+<p>但实时系统往往有很多限制，比如编程语言等，往往吞吐率低，而且造价高昂。对大多数服务器并不适用。</p>
+<h4 id="调整垃圾回收的影响"><a href="#调整垃圾回收的影响" class="headerlink" title="调整垃圾回收的影响"></a>调整垃圾回收的影响</h4><p>可能把GC暂停视为节点的一个计划内的临时离线，当节点启动垃圾回收时，通知其他节点来接管客户端请求。目前一些延迟敏感的系统（如金融交易系统）已经采用这种方法。</p>
+<h2 id="知识、真相与谎言"><a href="#知识、真相与谎言" class="headerlink" title="知识、真相与谎言"></a>知识、真相与谎言</h2><p>分布式系统中，节点只能通过消息交换来获得其他节点当前的状态，如果远程节点没有响应，没法区分网络问题还是节点问题，就不知道节点处于什么状态。</p>
+<h3 id="真相由多数决定"><a href="#真相由多数决定" class="headerlink" title="真相由多数决定"></a>真相由多数决定</h3><p>如果某个节点可以收到别的节点的消息，但发出去的消息要么丢弃，要么延迟发送。其他节点就会一致声明上述节点失效。比如可能垃圾收集运行很长时间。</p>
+<p>节点不能根据自己的信息来判断自己的状态，由于节点可能随时失效或暂停-假死，因此分布式系统不能完全依赖某个节点。许多分布式算法都依靠法定票数，即节点间投票。</p>
+<h4 id="主节点与锁"><a href="#主节点与锁" class="headerlink" title="主节点与锁"></a>主节点与锁</h4><p>有时，我们需要在系统范围内只能有一个实例：</p>
+<ul>
+<li>只允许一个节点作为分区主节点，防止脑裂。</li>
+<li>只允许一个事务或客户端持有锁。</li>
+<li>只允许一个用户来使用特定的用户名，从而确保用户名可以唯一标识用户。</li>
+</ul>
+<p>另外，一个节点即使自认为它是 ”唯一“ 的主节点，但不一定获得了系统法定票数同意。它可能以前是主节点，但其他节点已经宣布它失效并选出另外的主节点。</p>
+<p>比如下面的例子：</p>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-4.png" loading="lazy"></p>
+<p>持有租约的客户端被暂停太久直到租约到期，另一个客户端获取租约，并写了文件，当暂停的客户端回来时，它仍错误的认为合法持有锁并尝试写文件，导致客户2的文件被破坏。</p>
+<h4 id="fencing令牌"><a href="#fencing令牌" class="headerlink" title="fencing令牌"></a>fencing令牌</h4><p>假设每次锁服务在授予锁或租约时，还会同时返回一个 fencing 令牌，该令牌（数字）没授予一次就会递增。然后要求客户端每次向存储系统发送写请求时，都必须包含所持有的 fencing 令牌。</p>
+<p><img src="https://gitee.com/gzj1999/blogImg/raw/master/img/fig8-5.png" loading="lazy"></p>
+<p>使用 ZooKeeper 作为锁服务时，可以用事务标识 zxid 或节点版本 cversion 来充当 fencing 令牌，这两个都可以满足单调递增要求。</p>
+<p>这种令牌检查通常在服务端进行，虽然看起来复杂，但这可以防止一些客户端的滥用情况。</p>
+<h3 id="拜占庭故障"><a href="#拜占庭故障" class="headerlink" title="拜占庭故障"></a>拜占庭故障</h3><p>fencing 令牌可以防止那些误操作，但节点试图破坏系统，发送消息时可以简单的伪造令牌。</p>
+<p>之前的假设是节点不可靠，但一定是诚实的，但如果节点出现 ”撒谎“ 的情况，分布式难度就上升一个台阶。例如节点明明没收到某条消息，但对外声称它收到了，这就是拜占庭故障。在这样不信任的环境中需要达到共识的问题也叫拜占庭将军问题。</p>
+<p>如果某个系统即使发生部分节点故障，甚至不遵从协议，故意攻击，干扰网络，仍可继续正常运行，我们称之为拜占庭式容错系统。比如：</p>
+<ul>
+<li>航天领域，内存或 CPU 寄存器中的数据可能会被辐射而发生故障，导致以不可预知的方式响应其他节点。</li>
+<li>有多个参与者的系统中，某些参与者可能会作弊或欺骗他人。比如比特币和其他区块链一样的点对点网络就是让互不信任的当事方就某项交易达成一致，且不依赖于集中的机制。</li>
+</ul>
+<p>但在数据中心中，所有节点都由一个组织集中控制（可信任），辐射水平也可以忽略。绝大多数服务器端数据系统中，部署拜占庭容错解决方案基本不太可行。</p>
+<p>软件的bug可以被认为是拜占庭故障，但如果将相同软件部署到所有节点，拜占庭式的容错算法也没办法解决问题。因为大多数容错算法要求系统超过三分之二的节点是功能正常的。</p>
+<h4 id="弱的谎言形式"><a href="#弱的谎言形式" class="headerlink" title="弱的谎言形式"></a>弱的谎言形式</h4><p>就算假定节点是诚实的，但依然推荐增加必要的机制来防范一些不那么恶意的 ”谎言“。虽然不是完整的拜占庭容错，但简单实用，提高系统的可靠性和健壮性。比如由于硬件或操作系统等错误，导致网络数据包出现损坏，一些简单的防范措施就是在应用层添加校验和。另一个是需要对公众开放的应用检查用户是所有输入，比如检查输入值大小，字符串大小，防止分配超大内存。</p>
+<h3 id="理论系统模型与现实"><a href="#理论系统模型与现实" class="headerlink" title="理论系统模型与现实"></a>理论系统模型与现实</h3><p>分布式系统的算法不能过分依赖特定的硬件和软件配置。这要求我们需要对预期的系统错误进行形式化描述。我们通过定义一些系统模型来形式化描述这些算法的前提条件。</p>
+<p>关于时间方面，有三种常见的模型：</p>
+<ul>
+<li>同步模型：同步模型假定有上界的网络延迟，有上界的进程暂停和有上界的时钟误差。就是这些不会超过一个界限。大多数实际系统的实际模型并非同步模型，因为无限延迟和暂停确实可能发生。</li>
+<li>部分同步模型：大多数情况下像一个同步系统一样运行，但有时候会超出网络延迟，进程在那头和时钟漂移的预期上界。这是个比较现实的模型。</li>
+<li>异步模型：算法不会对时机做出任何假设，甚至里面根本没有时钟。某些算法支持异步模型，但并不常见。</li>
+</ul>
+<p>除了时间外，还要节点失效。这有三种最常见的节点失效系统模型：</p>
+<ul>
+<li>崩溃-中止模型：算法假设一个节点只能以一种方式发生故障，即遭遇系统崩溃。意味着节点可能在任何时候突然停止响应，且节点以后永远消失，无法恢复。</li>
+<li>崩溃-恢复模型：节点可能在任何时候发生崩溃，但可能在一段时间后得到恢复并再次响应。节点上持久性存储的数据在崩溃中得以保存，但内存的状态可能丢失。</li>
+<li>拜占庭失效模型：节点可能发生任何事情，包括试图作弊和欺骗其他节点。</li>
+</ul>
+<p>真是系统的建模，最普遍用的就是崩溃-恢复模型结合部分同步模型。</p>
+<h4 id="算法的正确性"><a href="#算法的正确性" class="headerlink" title="算法的正确性"></a>算法的正确性</h4><p>为了定义算法是正确的，我们可以描述它的属性。例如，排序算法的输出具有如下特性：对于输出列表中的任何两个不同的元素，左边的元素比右边的元素小。这只是定义对列表进行排序含义的一种形式方式。</p>
+<p>比如前面锁服务的 fencing 令牌算法，属性有：</p>
+<ul>
+<li>唯一性：两个令牌请求不能获得相同的值。</li>
+<li>单调递增</li>
+<li>可用性：请求令牌的节点不发生崩溃最终一定会收到响应。</li>
+</ul>
+<p>如果针对某个系统模型的算法在各种情况下都能满足定义好的属性要求，那么我们称这个算法是正确的。</p>
+<h4 id="安全性和活性"><a href="#安全性和活性" class="headerlink" title="安全性和活性"></a>安全性和活性</h4><p>在上面令牌算法中，唯一性和单调递增就是安全性，可用性则属于活性。</p>
+<p>安全性可以理解为 ”没有发生意外“，而活性则类似 ”预期的事情最终一定会发生“。</p>
+<ul>
+<li>如果违反了安全性，我们可以明确的指向发生的特定的时间点。且一旦违法安全属性，违规行为无法撤销，破坏已经发生。</li>
+<li>活性则反过来，可能无法明确某个具体的时间点，但总是希望在未来某个时间点能满足要求。</li>
+</ul>
+<p>通常对于分布式算法，要求所有可能的系统模型下，都符合安全性。对于活性，则存在一些必要条件，比如只有在大多数节点没有崩溃的情况下，只有当网络最终从中断中恢复时，我们才可以说请求需要接收响应。</p>
+</div><ul class="post-copyright"><li class="post-copyright-author"><strong>本文作者：</strong>gzj</li><li class="post-copyright-link"><strong>本文链接：</strong><a href="https://zzugzj.github.io/posts/165ca954/" title="分布式系统的挑战">https://zzugzj.github.io/posts/165ca954/</a></li><li class="post-copyright-license"><strong>版权声明：</strong>本博客所有文章除特别声明外，均默认采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh" target="_blank" rel="noopener" title="CC BY-NC-SA 4.0 "><svg class="icon"><use xlink:href="#icon-creative-commons-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-by-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-nc-line"></use></svg><svg class="icon"><use xlink:href="#icon-creative-commons-sa-line"></use></svg></a> 许可协议。</li></ul></section></article><div class="post-nav"><div class="post-nav-item"><a class="post-nav-prev" href="/posts/6f7dffae/" rel="prev" title="一致性与共识"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-left-s-line"></use></svg><span class="post-nav-text">一致性与共识</span></a></div><div class="post-nav-item"><a class="post-nav-next" href="/posts/3e9da643/" rel="next" title="分布式系统-事务"><span class="post-nav-text">分布式系统-事务</span><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-right-s-line"></use></svg></a></div></div></div><div id="comment"><div class="comment-tooltip text-center"><span>点击按钮跳转 GitHub Issues 评论。</span><br><span>若没有本文 Issue，您可以使用 Comment 模版新建。</span><br><a class="hty-button hty-button--raised" id="github-issues" target="_blank" rel="noopener" href="https://github.com/zzugzj/zzugzj.github.io/issues?q=is:issue+分布式系统的挑战">GitHub Issues</a></div></div></main><footer class="sidebar-translate" id="footer"><div class="copyright"><span>&copy; 2020 – 2021 </span><span class="with-love" id="animate"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-cloud-line"></use></svg></span><span class="author"> gzj</span></div><div class="powered"><span>由 <a href="https://hexo.io" target="_blank" rel="noopener">Hexo</a> 驱动 v5.3.0</span><span class="footer-separator">|</span><span>主题 - <a rel="noopener" href="https://github.com/YunYouJun/hexo-theme-yun" target="_blank"><span>Yun</span></a> v1.3.0</span></div><div class="live_time"><span>本博客已运行</span><span id="display_live_time"></span><span class="moe-text">(●'◡'●)</span><script>function blog_live_time() {
+  window.setTimeout(blog_live_time, 1000);
+  const start = new Date('2020-12-31T00:00:00');
+  const now = new Date();
+  const timeDiff = (now.getTime() - start.getTime());
+  const msPerMinute = 60 * 1000;
+  const msPerHour = 60 * msPerMinute;
+  const msPerDay = 24 * msPerHour;
+  const passDay = Math.floor(timeDiff / msPerDay);
+  const passHour = Math.floor((timeDiff % msPerDay) / 60 / 60 / 1000);
+  const passMinute = Math.floor((timeDiff % msPerHour) / 60 / 1000);
+  const passSecond = Math.floor((timeDiff % msPerMinute) / 1000);
+  display_live_time.innerHTML = " " + passDay + " 天 " + passHour + " 小时 " + passMinute + " 分 " + passSecond + " 秒";
+}
+blog_live_time();
+</script></div></footer><a class="hty-icon-button" id="goUp" aria-label="back-to-top" href="#"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-arrow-up-s-line"></use></svg><svg class="progress-circle-container" viewBox="0 0 100 100"><circle class="progress-circle" id="progressCircle" cx="50" cy="50" r="48" fill="none" stroke="#0078E7" stroke-width="2" stroke-linecap="round"></circle></svg></a><a class="popup-trigger hty-icon-button icon-search" id="search" href="javascript:;" title="搜索"><span class="site-state-item-icon"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-search-line"></use></svg></span></a><script>window.addEventListener("DOMContentLoaded", () => {
+  // Handle and trigger popup window
+  document.querySelector(".popup-trigger").addEventListener("click", () => {
+    document.querySelector(".popup").classList.add("show");
+    setTimeout(() => {
+      document.querySelector(".search-input").focus();
+    }, 100);
+  });
+
+  // Monitor main search box
+  const onPopupClose = () => {
+    document.querySelector(".popup").classList.remove("show");
+  };
+
+  document.querySelector(".popup-btn-close").addEventListener("click", () => {
+    onPopupClose();
+  });
+
+  window.addEventListener("keyup", event => {
+    if (event.key === "Escape") {
+      onPopupClose();
+    }
+  });
+});
+</script><script src="/js/search/local-search.js" defer></script><div class="popup search-popup"><div class="search-header"><span class="popup-btn-close close-icon hty-icon-button"><svg class="icon" aria-hidden="true"><use xlink:href="#icon-close-line"></use></svg></span></div><div class="search-input-container"><input class="search-input" id="local-search-input" type="text" placeholder="搜索..." value=""></div><div id="local-search-result"></div></div><div class="aplayer no-destroy" id="aplayer" data-id="7840106285" data-server="tencent" data-type="playlist" data-fixed="true" data-theme="#0078E7" data-loop="all" data-order="list" data-preload="auto" data-volume="0.7" data-mutex data-lrctype="0" data-listmaxheight="340px" data-storagename="metingjs"></div></div><script defer src="/js/utils.js"></script><script defer src="/js/hexo-theme-yun.js"></script></body></html>
