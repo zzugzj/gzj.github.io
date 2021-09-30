@@ -4,33 +4,6 @@
   
     
     <entry>
-      <title>批处理系统</title>
-      <link href="posts/4d278c8b/"/>
-      <url>posts/4d278c8b/</url>
-      
-        <content type="html"><![CDATA[<link rel="stylesheet" class="aplayer-secondary-style-marker" href="\assets\css\APlayer.min.css"><script src="\assets\js\APlayer.min.js" class="aplayer-secondary-script-marker"></script><p>许多现有数据系统中都采用这种数据处理方式：你发送请求指令，一段时间后(我们期望)系统会给出一个结果。</p><p>三种不同类型的系统：</p><p> <strong><em>服务（在线系统）</em></strong></p><p>服务等待客户的请求或指令到达。每收到一个，服务会试图尽快处理它，并发回一个响应。响应时间通常是服务性能的主要衡量指标，可用性通常非常重要（如果客户端无法访问服务，用户可能会收到错误消息）。</p><p><strong><em>批处理系统（离线系统）</em></strong></p><p>一个批处理系统有大量的输入数据，跑一个<strong>作业（job）</strong>来处理它，并生成一些输出数据，这往往需要一段时间（从几分钟到几天），所以通常不会有用户等待作业完成。相反，批量作业通常会定期运行（例如，每天一次）。批处理作业的主要性能衡量标准通常是吞吐量（处理特定大小的输入所需的时间）。本章中讨论的就是批处理。</p><p><strong><em>流处理系统（准实时系统）</em></strong></p><p>流处理介于在线和离线（批处理）之间，所以有时候被称为<strong>准实时（near-real-time）</strong>或<strong>准在线（nearline）</strong>处理。像批处理系统一样，流处理消费输入并产生输出（并不需要响应请求）。但是，流式作业在事件发生后不久就会对事件进行操作，而批处理作业则需等待固定的一组输入数据。这种差异使流处理系统比起批处理系统具有更低的延迟。由于流处理基于批处理，我们将在<a href="ch11.md">第11章</a>讨论它。</p>]]></content>
-      
-      
-      <categories>
-          
-          <category> 分布式 </category>
-          
-      </categories>
-      
-      
-        <tags>
-            
-            <tag> 分布式 </tag>
-            
-            <tag> 数据库 </tag>
-            
-        </tags>
-      
-    </entry>
-    
-    
-    
-    <entry>
       <title>一致性与共识</title>
       <link href="posts/6f7dffae/"/>
       <url>posts/6f7dffae/</url>
